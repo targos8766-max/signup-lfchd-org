@@ -1,0 +1,21 @@
+{
+    "name": "boneblaze/signup-lfchd-org",
+    "description": "Web-based event signup and scheduling application",
+    "type": "project",
+    "license": "proprietary",
+    "autoload": {
+        "psr-4": {
+            "Boneblaze\\SignupLfchdOrg\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Matthew Bone",
+            "email": "targos8766@gmail.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "php": ">=8.2"
+    }
+}
