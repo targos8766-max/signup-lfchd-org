@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Boneblaze\SignupLfchdOrg\Services;
 
+use DateTimeImmutable;
 use RuntimeException;
 
 class MailgunMailer
@@ -13,6 +14,7 @@ class MailgunMailer
     private string $fromEmail;
     private string $fromName;
     private string $apiBaseUrl;
+    private string $appUrl;
 
     public function __construct()
     {
@@ -39,6 +41,12 @@ class MailgunMailer
                 '/'
             );
 
+        $this->appUrl =
+            rtrim(
+                trim((string) ($_ENV['APP_URL'] ?? '')),
+                '/'
+            );
+
         if (
             $this->apiKey === ''
             || $this->domain === ''
@@ -55,394 +63,379 @@ class MailgunMailer
         array $slot,
         array $registration
     ): void {
-        $recipientEmail =
-            trim((string) ($registration['email'] ?? ''));
-
-        if ($recipientEmail === '') {
+        if (empty($registration['email'])) {
             return;
         }
 
-        $recipientName = trim(
-            (string) ($registration['first_name'] ?? '')
-            . ' '
-            . (string) ($registration['last_name'] ?? '')
+        $language =
+            ($registration['preferred_language'] ?? 'en') === 'es'
+                ? 'es'
+                : 'en';
+
+        $eventTitle =
+            $language === 'es'
+            && !empty($event['title_es'])
+                ? $event['title_es']
+                : $event['title'];
+
+        $eventLocation =
+            $language === 'es'
+            && !empty($event['location_es'])
+                ? $event['location_es']
+                : ($event['location'] ?? '');
+
+        $start = new DateTimeImmutable(
+            $slot['start_datetime']
         );
 
-        $subject =
-            'Registration Confirmation - '
-            . (string) $event['title'];
+        $end = new DateTimeImmutable(
+            $slot['end_datetime']
+        );
 
         $confirmationUrl =
-            $this->buildConfirmationUrl(
-                (string) $event['public_slug'],
-                (string) $registration['confirmation_code']
+            $this->appUrl
+            . '/event/'
+            . rawurlencode($event['public_slug'])
+            . '/confirmation/'
+            . rawurlencode(
+                $registration['confirmation_code']
             );
 
-        $eventDate =
-            new \DateTimeImmutable(
-                (string) $event['event_date']
-            );
+        if ($language === 'es') {
+            $subject =
+                'Confirmación de registro: '
+                . $eventTitle;
 
-        $start =
-            new \DateTimeImmutable(
-                (string) $slot['start_datetime']
-            );
-
-        $end =
-            new \DateTimeImmutable(
-                (string) $slot['end_datetime']
-            );
-
-        $location =
-            trim((string) ($event['location'] ?? ''));
-
-        $textLines = [
-            'Your registration has been confirmed.',
-            '',
-            'Event: ' . (string) $event['title'],
-            'Date: ' . $eventDate->format('l, F j, Y'),
-            'Time: '
+            $text =
+                "Hola {$registration['first_name']},\n\n"
+                . "Su registro está confirmado.\n\n"
+                . "Evento: {$eventTitle}\n"
+                . 'Fecha: '
+                . $this->formatDate($start, 'es')
+                . "\n"
+                . 'Hora: '
                 . $start->format('g:i A')
                 . ' - '
-                . $end->format('g:i A'),
-        ];
+                . $end->format('g:i A')
+                . "\n";
 
-        if ($location !== '') {
-            $textLines[] =
-                'Location: ' . $location;
-        }
+            if ($eventLocation !== '') {
+                $text .=
+                    "Ubicación: {$eventLocation}\n";
+            }
 
-        $textLines[] = '';
-        $textLines[] =
-            'Confirmation code: '
-            . (string) $registration['confirmation_code'];
+            $text .=
+                "\nVer detalles o cancelar su registro:\n"
+                . $confirmationUrl
+                . "\n\n"
+                . "Lexington-Fayette County Health Department";
 
-        $textLines[] = '';
-        $textLines[] =
-            'View or cancel your registration: '
-            . $confirmationUrl;
+            $html =
+                '<p>Hola '
+                . $this->escape(
+                    $registration['first_name']
+                )
+                . ',</p>'
+                . '<p>Su registro está confirmado.</p>'
+                . '<p><strong>Evento:</strong> '
+                . $this->escape($eventTitle)
+                . '<br><strong>Fecha:</strong> '
+                . $this->escape(
+                    $this->formatDate($start, 'es')
+                )
+                . '<br><strong>Hora:</strong> '
+                . $this->escape(
+                    $start->format('g:i A')
+                    . ' - '
+                    . $end->format('g:i A')
+                );
 
-        $textLines[] = '';
-        $textLines[] =
-            'Lexington-Fayette County Health Department';
+            if ($eventLocation !== '') {
+                $html .=
+                    '<br><strong>Ubicación:</strong> '
+                    . $this->escape($eventLocation);
+            }
 
-        $textBody =
-            implode("\n", $textLines);
+            $html .=
+                '</p>'
+                . '<p><a href="'
+                . $this->escape($confirmationUrl)
+                . '">Ver detalles o cancelar su registro</a></p>'
+                . '<p>Lexington-Fayette County Health Department</p>';
+        } else {
+            $subject =
+                'Registration Confirmation: '
+                . $eventTitle;
 
-        $safeEventTitle =
-            htmlspecialchars(
-                (string) $event['title'],
-                ENT_QUOTES,
-                'UTF-8'
-            );
-
-        $safeLocation =
-            htmlspecialchars(
-                $location,
-                ENT_QUOTES,
-                'UTF-8'
-            );
-
-        $safeConfirmationCode =
-            htmlspecialchars(
-                (string) $registration['confirmation_code'],
-                ENT_QUOTES,
-                'UTF-8'
-            );
-
-        $safeConfirmationUrl =
-            htmlspecialchars(
-                $confirmationUrl,
-                ENT_QUOTES,
-                'UTF-8'
-            );
-
-        $htmlBody =
-            '<!doctype html>'
-            . '<html><body style="font-family:Arial,sans-serif;'
-            . 'color:#212529;line-height:1.5;">'
-            . '<h2>Registration Confirmed</h2>'
-            . '<p>Your registration has been confirmed.</p>'
-            . '<table cellpadding="6" cellspacing="0" border="0">'
-            . '<tr><td><strong>Event</strong></td><td>'
-            . $safeEventTitle
-            . '</td></tr>'
-            . '<tr><td><strong>Date</strong></td><td>'
-            . htmlspecialchars(
-                $eventDate->format('l, F j, Y'),
-                ENT_QUOTES,
-                'UTF-8'
-            )
-            . '</td></tr>'
-            . '<tr><td><strong>Time</strong></td><td>'
-            . htmlspecialchars(
-                $start->format('g:i A')
+            $text =
+                "Hello {$registration['first_name']},\n\n"
+                . "Your registration is confirmed.\n\n"
+                . "Event: {$eventTitle}\n"
+                . 'Date: '
+                . $this->formatDate($start, 'en')
+                . "\n"
+                . 'Time: '
+                . $start->format('g:i A')
                 . ' - '
-                . $end->format('g:i A'),
-                ENT_QUOTES,
-                'UTF-8'
-            )
-            . '</td></tr>';
+                . $end->format('g:i A')
+                . "\n";
 
-        if ($location !== '') {
-            $htmlBody .=
-                '<tr><td><strong>Location</strong></td><td>'
-                . $safeLocation
-                . '</td></tr>';
+            if ($eventLocation !== '') {
+                $text .=
+                    "Location: {$eventLocation}\n";
+            }
+
+            $text .=
+                "\nView details or cancel your registration:\n"
+                . $confirmationUrl
+                . "\n\n"
+                . "Lexington-Fayette County Health Department";
+
+            $html =
+                '<p>Hello '
+                . $this->escape(
+                    $registration['first_name']
+                )
+                . ',</p>'
+                . '<p>Your registration is confirmed.</p>'
+                . '<p><strong>Event:</strong> '
+                . $this->escape($eventTitle)
+                . '<br><strong>Date:</strong> '
+                . $this->escape(
+                    $this->formatDate($start, 'en')
+                )
+                . '<br><strong>Time:</strong> '
+                . $this->escape(
+                    $start->format('g:i A')
+                    . ' - '
+                    . $end->format('g:i A')
+                );
+
+            if ($eventLocation !== '') {
+                $html .=
+                    '<br><strong>Location:</strong> '
+                    . $this->escape($eventLocation);
+            }
+
+            $html .=
+                '</p>'
+                . '<p><a href="'
+                . $this->escape($confirmationUrl)
+                . '">View details or cancel your registration</a></p>'
+                . '<p>Lexington-Fayette County Health Department</p>';
         }
-
-        $htmlBody .=
-            '</table>'
-            . '<p><strong>Confirmation code:</strong> '
-            . $safeConfirmationCode
-            . '</p>'
-            . '<p><a href="'
-            . $safeConfirmationUrl
-            . '">View or cancel your registration</a></p>'
-            . '<p>Lexington-Fayette County Health Department</p>'
-            . '</body></html>';
 
         $this->send(
-            $recipientEmail,
-            $recipientName,
+            $registration['email'],
             $subject,
-            $textBody,
-            $htmlBody
+            $text,
+            $html
         );
     }
 
     public function sendCancellationConfirmation(
         array $registration
     ): void {
-        $recipientEmail =
-            trim((string) ($registration['email'] ?? ''));
-
-        if ($recipientEmail === '') {
+        if (empty($registration['email'])) {
             return;
         }
 
-        $recipientName = trim(
-            (string) ($registration['first_name'] ?? '')
-            . ' '
-            . (string) ($registration['last_name'] ?? '')
+        $language =
+            ($registration['preferred_language'] ?? 'en') === 'es'
+                ? 'es'
+                : 'en';
+
+        $eventTitle =
+            $language === 'es'
+            && !empty($registration['title_es'])
+                ? $registration['title_es']
+                : $registration['title'];
+
+        $eventLocation =
+            $language === 'es'
+            && !empty($registration['location_es'])
+                ? $registration['location_es']
+                : ($registration['location'] ?? '');
+
+        $start = new DateTimeImmutable(
+            $registration['start_datetime']
         );
 
-        $subject =
-            'Registration Cancelled - '
-            . (string) $registration['title'];
+        if ($language === 'es') {
+            $subject =
+                'Registro cancelado: '
+                . $eventTitle;
 
-        $start =
-            new \DateTimeImmutable(
-                (string) $registration['start_datetime']
-            );
-
-        $end =
-            new \DateTimeImmutable(
-                (string) $registration['end_datetime']
-            );
-
-        $location =
-            trim((string) ($registration['location'] ?? ''));
-
-        $confirmationUrl =
-            $this->buildConfirmationUrl(
-                (string) $registration['public_slug'],
-                (string) $registration['confirmation_code']
-            );
-
-        $textLines = [
-            'Your registration has been cancelled.',
-            '',
-            'Event: ' . (string) $registration['title'],
-            'Date: ' . $start->format('l, F j, Y'),
-            'Time: '
+            $text =
+                "Hola {$registration['first_name']},\n\n"
+                . "Su registro ha sido cancelado.\n\n"
+                . "Evento: {$eventTitle}\n"
+                . 'Fecha: '
+                . $this->formatDate($start, 'es')
+                . "\n"
+                . 'Hora: '
                 . $start->format('g:i A')
-                . ' - '
-                . $end->format('g:i A'),
-        ];
+                . "\n";
 
-        if ($location !== '') {
-            $textLines[] =
-                'Location: ' . $location;
+            if ($eventLocation !== '') {
+                $text .=
+                    "Ubicación: {$eventLocation}\n";
+            }
+
+            $text .=
+                "\nLexington-Fayette County Health Department";
+
+            $html =
+                '<p>Hola '
+                . $this->escape(
+                    $registration['first_name']
+                )
+                . ',</p>'
+                . '<p>Su registro ha sido cancelado.</p>'
+                . '<p><strong>Evento:</strong> '
+                . $this->escape($eventTitle)
+                . '<br><strong>Fecha:</strong> '
+                . $this->escape(
+                    $this->formatDate($start, 'es')
+                )
+                . '<br><strong>Hora:</strong> '
+                . $this->escape(
+                    $start->format('g:i A')
+                );
+
+            if ($eventLocation !== '') {
+                $html .=
+                    '<br><strong>Ubicación:</strong> '
+                    . $this->escape($eventLocation);
+            }
+
+            $html .=
+                '</p>'
+                . '<p>Lexington-Fayette County Health Department</p>';
+        } else {
+            $subject =
+                'Registration Cancelled: '
+                . $eventTitle;
+
+            $text =
+                "Hello {$registration['first_name']},\n\n"
+                . "Your registration has been cancelled.\n\n"
+                . "Event: {$eventTitle}\n"
+                . 'Date: '
+                . $this->formatDate($start, 'en')
+                . "\n"
+                . 'Time: '
+                . $start->format('g:i A')
+                . "\n";
+
+            if ($eventLocation !== '') {
+                $text .=
+                    "Location: {$eventLocation}\n";
+            }
+
+            $text .=
+                "\nLexington-Fayette County Health Department";
+
+            $html =
+                '<p>Hello '
+                . $this->escape(
+                    $registration['first_name']
+                )
+                . ',</p>'
+                . '<p>Your registration has been cancelled.</p>'
+                . '<p><strong>Event:</strong> '
+                . $this->escape($eventTitle)
+                . '<br><strong>Date:</strong> '
+                . $this->escape(
+                    $this->formatDate($start, 'en')
+                )
+                . '<br><strong>Time:</strong> '
+                . $this->escape(
+                    $start->format('g:i A')
+                );
+
+            if ($eventLocation !== '') {
+                $html .=
+                    '<br><strong>Location:</strong> '
+                    . $this->escape($eventLocation);
+            }
+
+            $html .=
+                '</p>'
+                . '<p>Lexington-Fayette County Health Department</p>';
         }
-
-        $textLines[] = '';
-        $textLines[] =
-            'The reserved seat has been released.';
-
-        $textLines[] =
-            'Registration details: ' . $confirmationUrl;
-
-        $textLines[] = '';
-        $textLines[] =
-            'Lexington-Fayette County Health Department';
-
-        $textBody = implode("\n", $textLines);
-
-        $safeTitle = htmlspecialchars(
-            (string) $registration['title'],
-            ENT_QUOTES,
-            'UTF-8'
-        );
-
-        $safeLocation = htmlspecialchars(
-            $location,
-            ENT_QUOTES,
-            'UTF-8'
-        );
-
-        $safeUrl = htmlspecialchars(
-            $confirmationUrl,
-            ENT_QUOTES,
-            'UTF-8'
-        );
-
-        $htmlBody =
-            '<!doctype html>'
-            . '<html><body style="font-family:Arial,sans-serif;'
-            . 'color:#212529;line-height:1.5;">'
-            . '<h2>Registration Cancelled</h2>'
-            . '<p>Your registration has been cancelled.</p>'
-            . '<table cellpadding="6" cellspacing="0" border="0">'
-            . '<tr><td><strong>Event</strong></td><td>'
-            . $safeTitle
-            . '</td></tr>'
-            . '<tr><td><strong>Date</strong></td><td>'
-            . htmlspecialchars(
-                $start->format('l, F j, Y'),
-                ENT_QUOTES,
-                'UTF-8'
-            )
-            . '</td></tr>'
-            . '<tr><td><strong>Time</strong></td><td>'
-            . htmlspecialchars(
-                $start->format('g:i A')
-                . ' - '
-                . $end->format('g:i A'),
-                ENT_QUOTES,
-                'UTF-8'
-            )
-            . '</td></tr>';
-
-        if ($location !== '') {
-            $htmlBody .=
-                '<tr><td><strong>Location</strong></td><td>'
-                . $safeLocation
-                . '</td></tr>';
-        }
-
-        $htmlBody .=
-            '</table>'
-            . '<p>The reserved seat has been released.</p>'
-            . '<p><a href="'
-            . $safeUrl
-            . '">View registration details</a></p>'
-            . '<p>Lexington-Fayette County Health Department</p>'
-            . '</body></html>';
 
         $this->send(
-            $recipientEmail,
-            $recipientName,
+            $registration['email'],
             $subject,
-            $textBody,
-            $htmlBody
+            $text,
+            $html
         );
-    }
-
-    private function buildConfirmationUrl(
-        string $slug,
-        string $confirmationCode
-    ): string {
-        return rtrim(
-            (string) ($_ENV['APP_URL'] ?? ''),
-            '/'
-        )
-        . '/event/'
-        . rawurlencode($slug)
-        . '/confirmation/'
-        . rawurlencode($confirmationCode);
     }
 
     private function send(
-        string $toEmail,
-        string $toName,
+        string $to,
         string $subject,
-        string $textBody,
-        string $htmlBody
+        string $text,
+        string $html
     ): void {
-        if (!function_exists('curl_init')) {
-            throw new RuntimeException(
-                'PHP cURL extension is not installed.'
-            );
-        }
-
         $url =
             $this->apiBaseUrl
             . '/'
             . rawurlencode($this->domain)
             . '/messages';
 
-        $from =
-            $this->fromName !== ''
-            ? $this->fromName
+        $postFields = [
+            'from' =>
+                $this->fromName
                 . ' <'
                 . $this->fromEmail
-                . '>'
-            : $this->fromEmail;
+                . '>',
+            'to' => $to,
+            'subject' => $subject,
+            'text' => $text,
+            'html' => $html,
+        ];
 
-        $to =
-            $toName !== ''
-            ? $toName
-                . ' <'
-                . $toEmail
-                . '>'
-            : $toEmail;
+        $ch = curl_init($url);
 
-        $curl = curl_init();
-
-        if ($curl === false) {
+        if ($ch === false) {
             throw new RuntimeException(
                 'Unable to initialize Mailgun request.'
             );
         }
 
         curl_setopt_array(
-            $curl,
+            $ch,
             [
-                CURLOPT_URL => $url,
                 CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $postFields,
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => 15,
                 CURLOPT_USERPWD =>
                     'api:' . $this->apiKey,
-                CURLOPT_POSTFIELDS => [
-                    'from' => $from,
-                    'to' => $to,
-                    'subject' => $subject,
-                    'text' => $textBody,
-                    'html' => $htmlBody,
-                ],
+                CURLOPT_TIMEOUT => 20,
             ]
         );
 
-        $response = curl_exec($curl);
+        $response = curl_exec($ch);
 
         if ($response === false) {
-            $error = curl_error($curl);
-            curl_close($curl);
+            $error = curl_error($ch);
+            curl_close($ch);
 
             throw new RuntimeException(
-                'Mailgun request failed: ' . $error
+                'Mailgun request failed: '
+                . $error
             );
         }
 
         $statusCode =
             (int) curl_getinfo(
-                $curl,
-                CURLINFO_HTTP_CODE
+                $ch,
+                CURLINFO_RESPONSE_CODE
             );
 
-        curl_close($curl);
+        curl_close($ch);
 
         if (
             $statusCode < 200
@@ -451,8 +444,61 @@ class MailgunMailer
             throw new RuntimeException(
                 'Mailgun returned HTTP '
                 . $statusCode
-                . '.'
+                . ': '
+                . $response
             );
         }
+    }
+
+    private function formatDate(
+        DateTimeImmutable $date,
+        string $language
+    ): string {
+        if ($language !== 'es') {
+            return $date->format('l, F j, Y');
+        }
+
+        $days = [
+            'Sunday' => 'domingo',
+            'Monday' => 'lunes',
+            'Tuesday' => 'martes',
+            'Wednesday' => 'miércoles',
+            'Thursday' => 'jueves',
+            'Friday' => 'viernes',
+            'Saturday' => 'sábado',
+        ];
+
+        $months = [
+            'January' => 'enero',
+            'February' => 'febrero',
+            'March' => 'marzo',
+            'April' => 'abril',
+            'May' => 'mayo',
+            'June' => 'junio',
+            'July' => 'julio',
+            'August' => 'agosto',
+            'September' => 'septiembre',
+            'October' => 'octubre',
+            'November' => 'noviembre',
+            'December' => 'diciembre',
+        ];
+
+        return $days[$date->format('l')]
+            . ', '
+            . $date->format('j')
+            . ' de '
+            . $months[$date->format('F')]
+            . ' de '
+            . $date->format('Y');
+    }
+
+    private function escape(
+        string $value
+    ): string {
+        return htmlspecialchars(
+            $value,
+            ENT_QUOTES,
+            'UTF-8'
+        );
     }
 }

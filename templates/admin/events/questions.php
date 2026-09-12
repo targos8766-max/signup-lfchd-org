@@ -76,16 +76,33 @@ require dirname(__DIR__) . '/partials/header.php';
 
             <div class="mb-3">
                 <label class="form-label">
-                    Question
+                    Question - English
                 </label>
 
-                <input
-                    type="text"
+                <textarea
                     name="question_text"
-                    class="form-control"
+                    class="form-control question-text-field"
                     maxlength="500"
+                    rows="2"
                     required
-                >
+                ></textarea>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">
+                    Question - Spanish
+                </label>
+
+                <textarea
+                    name="question_text_es"
+                    class="form-control question-text-field"
+                    maxlength="500"
+                    rows="2"
+                ></textarea>
+
+                <div class="form-text">
+                    Optional. If blank, the public form will use the English question.
+                </div>
             </div>
 
             <div class="row">
@@ -96,7 +113,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
                     <select
                         name="question_type"
-                        class="form-select"
+                        class="form-select question-type-select"
                     >
                         <option value="text">
                             Text
@@ -136,95 +153,120 @@ require dirname(__DIR__) . '/partials/header.php';
                 </div>
             </div>
 
-            <div class="border rounded p-3 mb-4 bg-light">
-                <h3 class="h6 mb-3">
-                    Conditional Display
-                </h3>
-
-                <div class="row g-3">
-                    <div class="col-lg-6">
+            <div class="dropdown-options-fields">
+                <div class="row">
+                    <div class="col-lg-6 mb-3">
                         <label class="form-label">
-                            Show this question only when
+                            Options - English
                         </label>
 
-                        <select
-                            name="conditional_question_id"
-                            class="form-select"
-                        >
-                            <option value="">
-                                Always show
-                            </option>
-
-                            <?php foreach ($conditionQuestions as $conditionQuestion): ?>
-                                <option
-                                    value="<?= (int) $conditionQuestion['id'] ?>"
-                                >
-                                    <?= htmlspecialchars(
-                                        $conditionQuestion['question_text'],
-                                        ENT_QUOTES,
-                                        'UTF-8'
-                                    ) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <div class="col-lg-3">
-                        <label class="form-label">
-                            Condition
-                        </label>
-
-                        <select
-                            name="conditional_operator"
-                            class="form-select"
-                        >
-                            <option value="equals">
-                                Equals
-                            </option>
-
-                            <option value="not_equals">
-                                Does Not Equal
-                            </option>
-                        </select>
-                    </div>
-
-                    <div class="col-lg-3">
-                        <label class="form-label">
-                            Value
-                        </label>
-
-                        <input
-                            type="text"
-                            name="conditional_value"
+                        <textarea
+                            name="options"
                             class="form-control"
-                            placeholder="Example: Yes"
-                        >
+                            rows="4"
+                            placeholder="Enter one option per line"
+                        ></textarea>
+
+                        <div class="form-text">
+                            For Dropdown questions, enter at least two choices. For Checkbox questions, leave blank for a single yes/no checkbox or enter one choice per line for multiple checkboxes.
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6 mb-3">
+                        <label class="form-label">
+                            Options - Spanish
+                        </label>
+
+                        <textarea
+                            name="options_es"
+                            class="form-control"
+                            rows="4"
+                            placeholder="Enter one translated option per line"
+                        ></textarea>
+
+                        <div class="form-text">
+                            Optional. If used, enter the same number of translated choices and keep them
+                            in the same order as the English options.
+                        </div>
                     </div>
                 </div>
-
-                <div class="form-text mt-2">
-                    Only Dropdown and Checkbox questions can control another question.
-                    For checkboxes, use 1 for checked and 0 for unchecked.
-                </div>
             </div>
 
-            <div class="mb-3">
-                <label class="form-label">
-                    Dropdown Options
-                </label>
+            <details class="border rounded mb-4 bg-light">
+                <summary class="p-3 fw-semibold" style="cursor: pointer;">
+                    Conditional Display
+                </summary>
 
-                <textarea
-                    name="options"
-                    class="form-control"
-                    rows="4"
-                    placeholder="Enter one option per line"
-                ></textarea>
+                <div class="p-3 pt-0">
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <label class="form-label">
+                                Show this question only when
+                            </label>
 
-                <div class="form-text">
-                    Only used for Dropdown questions.
-                    Enter one choice per line.
+                            <select
+                                name="conditional_question_id"
+                                class="form-select"
+                            >
+                                <option value="">
+                                    Always show
+                                </option>
+
+                                <?php foreach ($conditionQuestions as $conditionQuestion): ?>
+                                    <option
+                                        value="<?= (int) $conditionQuestion['id'] ?>"
+                                    >
+                                        <?= htmlspecialchars(
+                                            $conditionQuestion['question_text'],
+                                            ENT_QUOTES,
+                                            'UTF-8'
+                                        ) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="col-lg-3">
+                            <label class="form-label">
+                                Condition
+                            </label>
+
+                            <select
+                                name="conditional_operator"
+                                class="form-select"
+                            >
+                                <option value="equals">
+                                    Equals
+                                </option>
+
+                                <option value="not_equals">
+                                    Does Not Equal
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="col-lg-3">
+                            <label class="form-label">
+                                Value
+                            </label>
+
+                            <input
+                                type="text"
+                                name="conditional_value"
+                                class="form-control"
+                                placeholder="Example: Yes"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="form-text mt-2">
+                        Conditions continue to use the stored English answer value.
+                        Only Dropdown and Checkbox questions can control another question.
+                        For a single checkbox, use 1 for checked and 0 for unchecked.
+                        Multi-option checkbox conditions will use the English option value.
+                    </div>
                 </div>
-            </div>
+            </details>
 
             <button
                 type="submit"
@@ -252,6 +294,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
         <?php
         $optionsText = '';
+        $optionsTextEs = '';
 
         if (!empty($question['options_json'])) {
             $decoded = json_decode(
@@ -263,6 +306,20 @@ require dirname(__DIR__) . '/partials/header.php';
                 $optionsText = implode(
                     PHP_EOL,
                     $decoded
+                );
+            }
+        }
+
+        if (!empty($question['options_json_es'])) {
+            $decodedEs = json_decode(
+                $question['options_json_es'],
+                true
+            );
+
+            if (is_array($decodedEs)) {
+                $optionsTextEs = implode(
+                    PHP_EOL,
+                    $decodedEs
                 );
             }
         }
@@ -279,21 +336,37 @@ require dirname(__DIR__) . '/partials/header.php';
 
                     <div class="mb-3">
                         <label class="form-label">
-                            Question
+                            Question - English
                         </label>
 
-                        <input
-                            type="text"
+                        <textarea
                             name="question_text"
-                            class="form-control"
+                            class="form-control question-text-field"
                             maxlength="500"
+                            rows="2"
                             required
-                            value="<?= htmlspecialchars(
-                                $question['question_text'],
-                                ENT_QUOTES,
-                                'UTF-8'
-                            ) ?>"
-                        >
+                        ><?= htmlspecialchars(
+                            $question['question_text'],
+                            ENT_QUOTES,
+                            'UTF-8'
+                        ) ?></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Question - Spanish
+                        </label>
+
+                        <textarea
+                            name="question_text_es"
+                            class="form-control question-text-field"
+                            maxlength="500"
+                            rows="2"
+                        ><?= htmlspecialchars(
+                            $question['question_text_es'] ?? '',
+                            ENT_QUOTES,
+                            'UTF-8'
+                        ) ?></textarea>
                     </div>
 
                     <div class="row">
@@ -304,7 +377,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
                             <select
                                 name="question_type"
-                                class="form-select"
+                                class="form-select question-type-select"
                             >
                                 <?php
                                 $types = [
@@ -497,28 +570,50 @@ require dirname(__DIR__) . '/partials/header.php';
 
                         <div class="form-text mt-2">
                             Leave this set to Always show if this question should appear for everyone.
-                            For checkboxes, use 1 for checked and 0 for unchecked.
+                            Conditions continue to use the stored English answer value.
+                            For a single checkbox, use 1 for checked and 0 for unchecked.
+                            Multi-option checkbox conditions will use the English option value.
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">
-                            Dropdown Options
-                        </label>
+                    <div class="dropdown-options-fields">
+                        <div class="row">
+                            <div class="col-lg-6 mb-3">
+                                <label class="form-label">
+                                    Options - English
+                                </label>
 
-                        <textarea
-                            name="options"
-                            class="form-control"
-                            rows="4"
-                        ><?= htmlspecialchars(
-                            $optionsText,
-                            ENT_QUOTES,
-                            'UTF-8'
-                        ) ?></textarea>
+                                <textarea
+                                    name="options"
+                                    class="form-control"
+                                    rows="4"
+                                ><?= htmlspecialchars(
+                                    $optionsText,
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?></textarea>
+                            </div>
 
-                        <div class="form-text">
-                            Only used for Dropdown questions.
-                            Enter one choice per line.
+                            <div class="col-lg-6 mb-3">
+                                <label class="form-label">
+                                    Options - Spanish
+                                </label>
+
+                                <textarea
+                                    name="options_es"
+                                    class="form-control"
+                                    rows="4"
+                                ><?= htmlspecialchars(
+                                    $optionsTextEs,
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?></textarea>
+
+                                <div class="form-text">
+                                    If used, the number and order of Spanish options must
+                                    match the English options.
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -536,6 +631,51 @@ require dirname(__DIR__) . '/partials/header.php';
     <?php endforeach; ?>
 
 <?php endif; ?>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('form').forEach(function (form) {
+        const typeSelect = form.querySelector('.question-type-select');
+        const optionsFields = form.querySelector('.dropdown-options-fields');
+        const questionTextFields = form.querySelectorAll('.question-text-field');
+
+        if (!typeSelect) {
+            return;
+        }
+
+        function updateQuestionFields() {
+            const type = typeSelect.value;
+            const usesOptions =
+                type === 'select'
+                || type === 'checkbox';
+
+            if (optionsFields) {
+                optionsFields.classList.toggle(
+                    'd-none',
+                    !usesOptions
+                );
+
+                optionsFields
+                    .querySelectorAll('textarea')
+                    .forEach(function (field) {
+                        field.disabled = !usesOptions;
+                    });
+            }
+
+            questionTextFields.forEach(function (field) {
+                field.rows = type === 'textarea' ? 5 : 2;
+            });
+        }
+
+        typeSelect.addEventListener(
+            'change',
+            updateQuestionFields
+        );
+
+        updateQuestionFields();
+    });
+});
+</script>
 
 <?php
 

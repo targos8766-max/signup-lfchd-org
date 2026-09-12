@@ -224,7 +224,6 @@ require dirname(__DIR__) . '/partials/header.php';
                             <th>Name</th>
                             <th>Email</th>
                             <th>Phone</th>
-                            <th>Department</th>
                             <th>Status</th>
                             <th>Registered</th>
                             <?php if ($questions): ?>
@@ -265,13 +264,6 @@ require dirname(__DIR__) . '/partials/header.php';
                                     ) ?>
                                 </td>
 
-                                <td>
-                                    <?= htmlspecialchars(
-                                        $registration['department'] ?? '',
-                                        ENT_QUOTES,
-                                        'UTF-8'
-                                    ) ?>
-                                </td>
 
                                 <td>
                                     <?php

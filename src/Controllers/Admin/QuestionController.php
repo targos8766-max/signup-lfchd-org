@@ -19,6 +19,7 @@ class QuestionController
         );
 
         $statement->execute([$eventId]);
+
         $event = $statement->fetch();
 
         if (!$event) {
@@ -35,6 +36,7 @@ class QuestionController
         );
 
         $statement->execute([$eventId]);
+
         $questions = $statement->fetchAll();
 
         $conditionQuestions = array_filter(
@@ -57,6 +59,10 @@ class QuestionController
             (string) ($_POST['question_text'] ?? '')
         );
 
+        $questionTextEs = trim(
+            (string) ($_POST['question_text_es'] ?? '')
+        );
+
         $questionType =
             (string) ($_POST['question_type'] ?? 'text');
 
@@ -65,6 +71,10 @@ class QuestionController
 
         $optionsRaw = trim(
             (string) ($_POST['options'] ?? '')
+        );
+
+        $optionsRawEs = trim(
+            (string) ($_POST['options_es'] ?? '')
         );
 
         $conditionalQuestionId =
@@ -123,38 +133,26 @@ class QuestionController
                 . '/questions?error='
                 . urlencode('Please enter a valid question.')
             );
+
             exit;
         }
 
-        $optionsJson = null;
-
-        if ($questionType === 'select') {
-            $options = array_values(
-                array_filter(
-                    array_map(
-                        'trim',
-                        preg_split('/\r\n|\r|\n/', $optionsRaw)
-                    ),
-                    fn ($value) => $value !== ''
-                )
+        [$optionsJson, $optionsJsonEs, $optionsError] =
+            $this->buildOptions(
+                $questionType,
+                $optionsRaw,
+                $optionsRawEs
             );
 
-            if (count($options) < 2) {
-                header(
-                    'Location: /admin/events/'
-                    . $eventId
-                    . '/questions?error='
-                    . urlencode(
-                        'Dropdown questions need at least two options.'
-                    )
-                );
-                exit;
-            }
-
-            $optionsJson = json_encode(
-                $options,
-                JSON_UNESCAPED_UNICODE
+        if ($optionsError !== null) {
+            header(
+                'Location: /admin/events/'
+                . $eventId
+                . '/questions?error='
+                . urlencode($optionsError)
             );
+
+            exit;
         }
 
         $pdo = Database::connection();
@@ -166,6 +164,7 @@ class QuestionController
         );
 
         $statement->execute([$eventId]);
+
         $sortOrder = (int) $statement->fetchColumn();
 
         $statement = $pdo->prepare(
@@ -173,8 +172,10 @@ class QuestionController
                 (
                     event_id,
                     question_text,
+                    question_text_es,
                     question_type,
                     options_json,
+                    options_json_es,
                     required,
                     sort_order,
                     enabled,
@@ -183,14 +184,16 @@ class QuestionController
                     conditional_value
                 )
              VALUES
-                (?, ?, ?, ?, ?, ?, 1, ?, ?, ?)'
+                (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)'
         );
 
         $statement->execute([
             $eventId,
             $questionText,
+            $questionTextEs !== '' ? $questionTextEs : null,
             $questionType,
             $optionsJson,
+            $optionsJsonEs,
             $required,
             $sortOrder,
             $conditionalQuestionId,
@@ -203,6 +206,7 @@ class QuestionController
             . $eventId
             . '/questions?created=1'
         );
+
         exit;
     }
 
@@ -212,6 +216,10 @@ class QuestionController
     ): void {
         $questionText = trim(
             (string) ($_POST['question_text'] ?? '')
+        );
+
+        $questionTextEs = trim(
+            (string) ($_POST['question_text_es'] ?? '')
         );
 
         $questionType =
@@ -230,6 +238,10 @@ class QuestionController
 
         $optionsRaw = trim(
             (string) ($_POST['options'] ?? '')
+        );
+
+        $optionsRawEs = trim(
+            (string) ($_POST['options_es'] ?? '')
         );
 
         $conditionalQuestionId =
@@ -297,38 +309,26 @@ class QuestionController
                 . '/questions?error='
                 . urlencode('Please enter a valid question.')
             );
+
             exit;
         }
 
-        $optionsJson = null;
-
-        if ($questionType === 'select') {
-            $options = array_values(
-                array_filter(
-                    array_map(
-                        'trim',
-                        preg_split('/\r\n|\r|\n/', $optionsRaw)
-                    ),
-                    fn ($value) => $value !== ''
-                )
+        [$optionsJson, $optionsJsonEs, $optionsError] =
+            $this->buildOptions(
+                $questionType,
+                $optionsRaw,
+                $optionsRawEs
             );
 
-            if (count($options) < 2) {
-                header(
-                    'Location: /admin/events/'
-                    . $eventId
-                    . '/questions?error='
-                    . urlencode(
-                        'Dropdown questions need at least two options.'
-                    )
-                );
-                exit;
-            }
-
-            $optionsJson = json_encode(
-                $options,
-                JSON_UNESCAPED_UNICODE
+        if ($optionsError !== null) {
+            header(
+                'Location: /admin/events/'
+                . $eventId
+                . '/questions?error='
+                . urlencode($optionsError)
             );
+
+            exit;
         }
 
         $pdo = Database::connection();
@@ -337,8 +337,10 @@ class QuestionController
             'UPDATE event_questions
              SET
                 question_text = ?,
+                question_text_es = ?,
                 question_type = ?,
                 options_json = ?,
+                options_json_es = ?,
                 required = ?,
                 sort_order = ?,
                 enabled = ?,
@@ -351,8 +353,10 @@ class QuestionController
 
         $statement->execute([
             $questionText,
+            $questionTextEs !== '' ? $questionTextEs : null,
             $questionType,
             $optionsJson,
+            $optionsJsonEs,
             $required,
             $sortOrder,
             $enabled,
@@ -368,6 +372,85 @@ class QuestionController
             . $eventId
             . '/questions?saved=1'
         );
+
         exit;
+    }
+
+    private function buildOptions(
+        string $questionType,
+        string $optionsRaw,
+        string $optionsRawEs
+    ): array {
+        if (!in_array($questionType, ['select', 'checkbox'], true)) {
+            return [null, null, null];
+        }
+
+        $options = $this->parseOptions($optionsRaw);
+        $optionsEs = $this->parseOptions($optionsRawEs);
+
+        if ($questionType === 'select' && count($options) < 2) {
+            return [
+                null,
+                null,
+                'Dropdown questions need at least two English options.',
+            ];
+        }
+
+        /*
+         * Checkbox questions may remain a single yes/no checkbox when
+         * no options are entered. If options are entered, they become
+         * a multi-option checkbox question.
+         */
+        if (
+            $questionType === 'checkbox'
+            && $options === []
+            && $optionsEs !== []
+        ) {
+            return [
+                null,
+                null,
+                'Enter the English checkbox options before adding Spanish translations.',
+            ];
+        }
+
+        if (
+            $optionsEs !== []
+            && count($optionsEs) !== count($options)
+        ) {
+            return [
+                null,
+                null,
+                'Spanish options must have the same number of lines as the English options.',
+            ];
+        }
+
+        return [
+            $options !== []
+                ? json_encode(
+                    $options,
+                    JSON_UNESCAPED_UNICODE
+                )
+                : null,
+            $optionsEs !== []
+                ? json_encode(
+                    $optionsEs,
+                    JSON_UNESCAPED_UNICODE
+                )
+                : null,
+            null,
+        ];
+    }
+
+    private function parseOptions(string $optionsRaw): array
+    {
+        return array_values(
+            array_filter(
+                array_map(
+                    'trim',
+                    preg_split('/\r\n|\r|\n/', $optionsRaw)
+                ),
+                fn ($value) => $value !== ''
+            )
+        );
     }
 }

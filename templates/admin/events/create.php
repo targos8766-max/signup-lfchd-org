@@ -40,10 +40,11 @@ require dirname(__DIR__) . '/partials/header.php';
                 class="card shadow-sm"
             >
 
-                <?php // echo Csrf::field() ?>
                 <?= Csrf::field() ?>
 
                 <div class="card-body">
+
+                    <h2 class="h5 mb-3">English Public Content</h2>
 
                     <div class="mb-3">
                         <label class="form-label">
@@ -81,6 +82,53 @@ require dirname(__DIR__) . '/partials/header.php';
                             name="location"
                             class="form-control"
                             value="<?= htmlspecialchars($location ?? '') ?>"
+                        >
+                    </div>
+
+                    <hr class="my-4">
+
+                    <h2 class="h5 mb-3">Spanish Public Content</h2>
+
+                    <div class="alert alert-light border">
+                        Spanish fields are optional. If a Spanish translation is not entered,
+                        the public site will fall back to the English version.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Event Name - Spanish
+                        </label>
+
+                        <input
+                            type="text"
+                            name="title_es"
+                            class="form-control"
+                            value="<?= htmlspecialchars($titleEs ?? '') ?>"
+                        >
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Description - Spanish
+                        </label>
+
+                        <textarea
+                            name="description_es"
+                            class="form-control"
+                            rows="4"
+                        ><?= htmlspecialchars($descriptionEs ?? '') ?></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Location - Spanish
+                        </label>
+
+                        <input
+                            type="text"
+                            name="location_es"
+                            class="form-control"
+                            value="<?= htmlspecialchars($locationEs ?? '') ?>"
                         >
                     </div>
 

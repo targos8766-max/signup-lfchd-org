@@ -2,10 +2,174 @@
 
 use Boneblaze\SignupLfchdOrg\Services\Csrf;
 
+$language = $language ?? ($old['preferred_language'] ?? 'en');
+$language = $language === 'es' ? 'es' : 'en';
+
+$translations = [
+    'en' => [
+        'preferred_language' => 'Preferred Language',
+        'english' => 'English',
+        'spanish' => 'Español',
+        'date' => 'Date',
+        'location' => 'Location',
+        'select_time' => 'Select a Time',
+        'no_times' => 'There are currently no available appointment times.',
+        'seat' => 'seat',
+        'seats' => 'seats',
+        'remaining' => 'remaining',
+        'full' => 'Full',
+        'your_information' => 'Your Information',
+        'first_name' => 'First Name',
+        'last_name' => 'Last Name',
+        'email' => 'Email',
+        'phone' => 'Phone',
+        'sms_label' => 'Send me registration confirmation and reminder text messages from LFCHD.',
+        'sms_help' => 'Message frequency varies. Message and data rates may apply. Reply STOP to unsubscribe. SMS consent is optional and is not required to register.',
+        'additional_information' => 'Additional Information',
+        'select_option' => 'Select an option',
+        'complete_signup' => 'Complete Signup',
+        'registration_unavailable' => 'Registration is unavailable.',
+    ],
+    'es' => [
+        'preferred_language' => 'Idioma preferido',
+        'english' => 'English',
+        'spanish' => 'Español',
+        'date' => 'Fecha',
+        'location' => 'Ubicación',
+        'select_time' => 'Seleccione una hora',
+        'no_times' => 'Actualmente no hay horarios disponibles.',
+        'seat' => 'cupo',
+        'seats' => 'cupos',
+        'remaining' => 'disponibles',
+        'full' => 'Lleno',
+        'your_information' => 'Su información',
+        'first_name' => 'Nombre',
+        'last_name' => 'Apellido',
+        'email' => 'Correo electrónico',
+        'phone' => 'Teléfono',
+        'sms_label' => 'Envíeme por mensaje de texto la confirmación de registro y recordatorios de LFCHD.',
+        'sms_help' => 'La frecuencia de los mensajes varía. Pueden aplicarse tarifas de mensajes y datos. Responda STOP para dejar de recibir mensajes. El consentimiento para SMS es opcional y no es necesario para registrarse.',
+        'additional_information' => 'Información adicional',
+        'select_option' => 'Seleccione una opción',
+        'complete_signup' => 'Completar registro',
+        'registration_unavailable' => 'El registro no está disponible.',
+    ],
+];
+
+$t = $translations[$language];
+
+$eventTitle = $language === 'es' && !empty($event['title_es'])
+    ? $event['title_es']
+    : $event['title'];
+
+$eventDescription = $language === 'es' && !empty($event['description_es'])
+    ? $event['description_es']
+    : ($event['description'] ?? '');
+
+$eventLocation = $language === 'es' && !empty($event['location_es'])
+    ? $event['location_es']
+    : ($event['location'] ?? '');
+
+function publicEventDate(string $date, string $language): string
+{
+    $value = new DateTimeImmutable($date);
+
+    if ($language !== 'es') {
+        return $value->format('l, F j, Y');
+    }
+
+    $days = [
+        'Sunday' => 'domingo',
+        'Monday' => 'lunes',
+        'Tuesday' => 'martes',
+        'Wednesday' => 'miércoles',
+        'Thursday' => 'jueves',
+        'Friday' => 'viernes',
+        'Saturday' => 'sábado',
+    ];
+
+    $months = [
+        'January' => 'enero',
+        'February' => 'febrero',
+        'March' => 'marzo',
+        'April' => 'abril',
+        'May' => 'mayo',
+        'June' => 'junio',
+        'July' => 'julio',
+        'August' => 'agosto',
+        'September' => 'septiembre',
+        'October' => 'octubre',
+        'November' => 'noviembre',
+        'December' => 'diciembre',
+    ];
+
+    return $days[$value->format('l')]
+        . ', '
+        . $value->format('j')
+        . ' de '
+        . $months[$value->format('F')]
+        . ' de '
+        . $value->format('Y');
+}
+
+function questionLabel(array $question, string $language): string
+{
+    if (
+        $language === 'es'
+        && !empty($question['question_text_es'])
+    ) {
+        return $question['question_text_es'];
+    }
+
+    return $question['question_text'];
+}
+
+function questionOptions(array $question, string $language): array
+{
+    $englishOptions = json_decode(
+        $question['options_json'] ?? '[]',
+        true
+    );
+
+    if (!is_array($englishOptions)) {
+        $englishOptions = [];
+    }
+
+    $displayOptions = $englishOptions;
+
+    if (
+        $language === 'es'
+        && !empty($question['options_json_es'])
+    ) {
+        $spanishOptions = json_decode(
+            $question['options_json_es'],
+            true
+        );
+
+        if (
+            is_array($spanishOptions)
+            && count($spanishOptions) === count($englishOptions)
+        ) {
+            $displayOptions = $spanishOptions;
+        }
+    }
+
+    $result = [];
+
+    foreach ($englishOptions as $index => $value) {
+        $result[] = [
+            'value' => (string) $value,
+            'label' => (string) ($displayOptions[$index] ?? $value),
+        ];
+    }
+
+    return $result;
+}
+
 ?>
 
 <!doctype html>
-<html lang="en">
+<html lang="<?= $language ?>">
 <head>
     <meta charset="utf-8">
 
@@ -16,7 +180,7 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
 
     <title>
         <?= htmlspecialchars(
-            $event['title'],
+            $eventTitle,
             ENT_QUOTES,
             'UTF-8'
         ) ?>
@@ -61,20 +225,51 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
             <div class="card shadow-sm mb-4">
                 <div class="card-body">
 
+                    <div class="d-flex justify-content-end mb-3">
+                        <div>
+                            <label
+                                for="preferred_language_selector"
+                                class="form-label fw-semibold mb-1"
+                            >
+                                Preferred Language / Idioma preferido
+                            </label>
+
+                            <select
+                                id="preferred_language_selector"
+                                class="form-select"
+                                style="min-width: 180px;"
+                            >
+                                <option
+                                    value="en"
+                                    <?= $language === 'en' ? 'selected' : '' ?>
+                                >
+                                    English
+                                </option>
+
+                                <option
+                                    value="es"
+                                    <?= $language === 'es' ? 'selected' : '' ?>
+                                >
+                                    Español
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
                     <h1 class="mb-3">
                         <?= htmlspecialchars(
-                            $event['title'],
+                            $eventTitle,
                             ENT_QUOTES,
                             'UTF-8'
                         ) ?>
                     </h1>
 
-                    <?php if (!empty($event['description'])): ?>
+                    <?php if ($eventDescription !== ''): ?>
 
                         <p>
                             <?= nl2br(
                                 htmlspecialchars(
-                                    $event['description'],
+                                    $eventDescription,
                                     ENT_QUOTES,
                                     'UTF-8'
                                 )
@@ -86,26 +281,29 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
                     <dl class="row mb-0">
 
                         <dt class="col-sm-3">
-                            Date
+                            <?= htmlspecialchars($t['date']) ?>
                         </dt>
 
                         <dd class="col-sm-9">
-                            <?= (
-                                new DateTimeImmutable(
-                                    $event['event_date']
-                                )
-                            )->format('l, F j, Y') ?>
+                            <?= htmlspecialchars(
+                                publicEventDate(
+                                    $event['event_date'],
+                                    $language
+                                ),
+                                ENT_QUOTES,
+                                'UTF-8'
+                            ) ?>
                         </dd>
 
-                        <?php if (!empty($event['location'])): ?>
+                        <?php if ($eventLocation !== ''): ?>
 
                             <dt class="col-sm-3">
-                                Location
+                                <?= htmlspecialchars($t['location']) ?>
                             </dt>
 
                             <dd class="col-sm-9">
                                 <?= htmlspecialchars(
-                                    $event['location'],
+                                    $eventLocation,
                                     ENT_QUOTES,
                                     'UTF-8'
                                 ) ?>
@@ -145,7 +343,7 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
                 <div class="alert alert-info">
                     <?= htmlspecialchars(
                         $registrationMessage
-                        ?? 'Registration is unavailable.',
+                        ?? $t['registration_unavailable'],
                         ENT_QUOTES,
                         'UTF-8'
                     ) ?>
@@ -162,11 +360,18 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
 
                     <?= Csrf::field() ?>
 
+                    <input
+                        type="hidden"
+                        id="preferred_language"
+                        name="preferred_language"
+                        value="<?= $language ?>"
+                    >
+
                     <div class="card shadow-sm mb-4">
 
                         <div class="card-header">
                             <strong>
-                                Select a Time
+                                <?= htmlspecialchars($t['select_time']) ?>
                             </strong>
                         </div>
 
@@ -183,8 +388,7 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
                             <?php if (!$availableSlots): ?>
 
                                 <div class="alert alert-warning mb-0">
-                                    There are currently no available
-                                    appointment times.
+                                    <?= htmlspecialchars($t['no_times']) ?>
                                 </div>
 
                             <?php else: ?>
@@ -256,14 +460,16 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
                                                         <?php if ($remaining > 0): ?>
 
                                                             <?= $remaining ?>
-                                                            seat<?= $remaining === 1
-                                                                ? ''
-                                                                : 's' ?>
-                                                            remaining
+                                                            <?= htmlspecialchars(
+                                                                $remaining === 1
+                                                                    ? $t['seat']
+                                                                    : $t['seats']
+                                                            ) ?>
+                                                            <?= htmlspecialchars($t['remaining']) ?>
 
                                                         <?php else: ?>
 
-                                                            Full
+                                                            <?= htmlspecialchars($t['full']) ?>
 
                                                         <?php endif; ?>
 
@@ -290,7 +496,7 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
 
                             <div class="card-header">
                                 <strong>
-                                    Your Information
+                                    <?= htmlspecialchars($t['your_information']) ?>
                                 </strong>
                             </div>
 
@@ -300,7 +506,7 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
 
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">
-                                            First Name
+                                            <?= htmlspecialchars($t['first_name']) ?>
                                         </label>
 
                                         <input
@@ -318,7 +524,7 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
 
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">
-                                            Last Name
+                                            <?= htmlspecialchars($t['last_name']) ?>
                                         </label>
 
                                         <input
@@ -338,7 +544,7 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
 
                                 <div class="mb-3">
                                     <label class="form-label">
-                                        Email
+                                        <?= htmlspecialchars($t['email']) ?>
                                     </label>
 
                                     <input
@@ -358,7 +564,7 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
                                         for="phone"
                                         class="form-label"
                                     >
-                                        Phone
+                                        <?= htmlspecialchars($t['phone']) ?>
                                     </label>
 
                                     <input
@@ -393,34 +599,13 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
                                             for="sms_opt_in"
                                             class="form-check-label"
                                         >
-                                            Send me registration confirmation
-                                            and reminder text messages from LFCHD.
+                                            <?= htmlspecialchars($t['sms_label']) ?>
                                         </label>
                                     </div>
 
                                     <div class="form-text ms-4">
-                                        Message frequency varies. Message and
-                                        data rates may apply. Reply STOP to
-                                        unsubscribe. SMS consent is optional
-                                        and is not required to register.
+                                        <?= htmlspecialchars($t['sms_help']) ?>
                                     </div>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">
-                                        Department
-                                    </label>
-
-                                    <input
-                                        type="text"
-                                        name="department"
-                                        class="form-control"
-                                        value="<?= htmlspecialchars(
-                                            $old['department'] ?? '',
-                                            ENT_QUOTES,
-                                            'UTF-8'
-                                        ) ?>"
-                                    >
                                 </div>
 
                                 <?php if (!empty($questions)): ?>
@@ -428,7 +613,7 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
                                     <hr class="my-4">
 
                                     <h2 class="h5 mb-3">
-                                        Additional Information
+                                        <?= htmlspecialchars($t['additional_information']) ?>
                                     </h2>
 
                                     <?php foreach ($questions as $question): ?>
@@ -440,12 +625,16 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
                                             $old['answers'][$questionId]
                                             ?? '';
 
-                                        if (is_array($oldAnswer)) {
-                                            $oldAnswer = '';
-                                        }
+                                        $oldAnswers = [];
 
-                                        $oldAnswer =
-                                            (string) $oldAnswer;
+                                        if (is_array($oldAnswer)) {
+                                            $oldAnswers = array_map(
+                                                'strval',
+                                                $oldAnswer
+                                            );
+                                        } else {
+                                            $oldAnswer = (string) $oldAnswer;
+                                        }
 
                                         $conditionalQuestionId =
                                             $question['conditional_question_id'] ?? null;
@@ -455,11 +644,30 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
 
                                         $conditionalValue =
                                             $question['conditional_value'] ?? null;
+
+                                        $label = questionLabel(
+                                            $question,
+                                            $language
+                                        );
+
+                                        $options = questionOptions(
+                                            $question,
+                                            $language
+                                        );
+
+                                        $isMultiCheckbox =
+                                            $question['question_type'] === 'checkbox'
+                                            && $options !== [];
                                         ?>
 
                                         <div
                                             class="mb-3 conditional-question"
                                             data-question-id="<?= $questionId ?>"
+                                            data-question-type="<?= htmlspecialchars(
+                                                $question['question_type'],
+                                                ENT_QUOTES,
+                                                'UTF-8'
+                                            ) ?>"
                                             data-condition-question-id="<?= htmlspecialchars(
                                                 (string) ($conditionalQuestionId ?? ''),
                                                 ENT_QUOTES,
@@ -484,7 +692,7 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
                                                     class="form-label"
                                                 >
                                                     <?= htmlspecialchars(
-                                                        $question['question_text'],
+                                                        $label,
                                                         ENT_QUOTES,
                                                         'UTF-8'
                                                     ) ?>
@@ -516,7 +724,7 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
                                                     class="form-label"
                                                 >
                                                     <?= htmlspecialchars(
-                                                        $question['question_text'],
+                                                        $label,
                                                         ENT_QUOTES,
                                                         'UTF-8'
                                                     ) ?>
@@ -530,7 +738,7 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
                                                     id="question-<?= $questionId ?>"
                                                     name="answers[<?= $questionId ?>]"
                                                     class="form-control"
-                                                    rows="4"
+                                                    rows="5"
                                                     <?= (int) $question['required'] === 1
                                                         ? 'required'
                                                         : '' ?>
@@ -542,23 +750,12 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
 
                                             <?php elseif ($question['question_type'] === 'select'): ?>
 
-                                                <?php
-                                                $options = json_decode(
-                                                    $question['options_json'] ?? '[]',
-                                                    true
-                                                );
-
-                                                if (!is_array($options)) {
-                                                    $options = [];
-                                                }
-                                                ?>
-
                                                 <label
                                                     for="question-<?= $questionId ?>"
                                                     class="form-label"
                                                 >
                                                     <?= htmlspecialchars(
-                                                        $question['question_text'],
+                                                        $label,
                                                         ENT_QUOTES,
                                                         'UTF-8'
                                                     ) ?>
@@ -578,23 +775,23 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
                                                 >
 
                                                     <option value="">
-                                                        Select an option
+                                                        <?= htmlspecialchars($t['select_option']) ?>
                                                     </option>
 
                                                     <?php foreach ($options as $option): ?>
 
                                                         <option
                                                             value="<?= htmlspecialchars(
-                                                                $option,
+                                                                $option['value'],
                                                                 ENT_QUOTES,
                                                                 'UTF-8'
                                                             ) ?>"
-                                                            <?= $oldAnswer === $option
+                                                            <?= $oldAnswer === $option['value']
                                                                 ? 'selected'
                                                                 : '' ?>
                                                         >
                                                             <?= htmlspecialchars(
-                                                                $option,
+                                                                $option['label'],
                                                                 ENT_QUOTES,
                                                                 'UTF-8'
                                                             ) ?>
@@ -603,6 +800,72 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
                                                     <?php endforeach; ?>
 
                                                 </select>
+
+                                            <?php elseif (
+                                                $question['question_type'] === 'checkbox'
+                                                && $isMultiCheckbox
+                                            ): ?>
+
+                                                <div class="form-label">
+                                                    <?= htmlspecialchars(
+                                                        $label,
+                                                        ENT_QUOTES,
+                                                        'UTF-8'
+                                                    ) ?>
+
+                                                    <?php if ((int) $question['required'] === 1): ?>
+                                                        <span class="text-danger">*</span>
+                                                    <?php endif; ?>
+                                                </div>
+
+                                                <?php foreach ($options as $index => $option): ?>
+
+                                                    <?php
+                                                    $checkboxId =
+                                                        'question-'
+                                                        . $questionId
+                                                        . '-'
+                                                        . $index;
+                                                    ?>
+
+                                                    <div class="form-check mb-2">
+
+                                                        <input
+                                                            type="checkbox"
+                                                            id="<?= $checkboxId ?>"
+                                                            name="answers[<?= $questionId ?>][]"
+                                                            value="<?= htmlspecialchars(
+                                                                $option['value'],
+                                                                ENT_QUOTES,
+                                                                'UTF-8'
+                                                            ) ?>"
+                                                            class="form-check-input multi-checkbox-answer"
+                                                            <?= in_array(
+                                                                $option['value'],
+                                                                $oldAnswers,
+                                                                true
+                                                            )
+                                                                ? 'checked'
+                                                                : '' ?>
+                                                            <?= (int) $question['required'] === 1
+                                                                ? 'data-checkbox-group-required="1"'
+                                                                : '' ?>
+                                                        >
+
+                                                        <label
+                                                            for="<?= $checkboxId ?>"
+                                                            class="form-check-label"
+                                                        >
+                                                            <?= htmlspecialchars(
+                                                                $option['label'],
+                                                                ENT_QUOTES,
+                                                                'UTF-8'
+                                                            ) ?>
+                                                        </label>
+
+                                                    </div>
+
+                                                <?php endforeach; ?>
 
                                             <?php elseif ($question['question_type'] === 'checkbox'): ?>
 
@@ -627,7 +890,7 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
                                                         class="form-check-label"
                                                     >
                                                         <?= htmlspecialchars(
-                                                            $question['question_text'],
+                                                            $label,
                                                             ENT_QUOTES,
                                                             'UTF-8'
                                                         ) ?>
@@ -655,7 +918,7 @@ use Boneblaze\SignupLfchdOrg\Services\Csrf;
                                     type="submit"
                                     class="btn btn-primary btn-lg"
                                 >
-                                    Complete Signup
+                                    <?= htmlspecialchars($t['complete_signup']) ?>
                                 </button>
 
                             </div>
@@ -684,6 +947,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const phone =
         document.getElementById('phone');
 
+    const languageSelector =
+        document.getElementById('preferred_language_selector');
+
+    const languageInput =
+        document.getElementById('preferred_language');
+
     function updateSmsPhoneRequirement() {
         if (!smsOptIn || !phone) {
             return;
@@ -693,23 +962,63 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function getQuestionValue(questionId) {
-        const checkbox = document.querySelector(
-            '[name="answers[' + questionId + ']"][type="checkbox"]'
+        const fields = document.querySelectorAll(
+            '[name="answers[' + questionId + ']"], '
+            + '[name="answers[' + questionId + '][]"]'
         );
 
-        if (checkbox) {
-            return checkbox.checked ? '1' : '0';
-        }
-
-        const field = document.querySelector(
-            '[name="answers[' + questionId + ']"]'
-        );
-
-        if (!field) {
+        if (!fields.length) {
             return '';
         }
 
+        if (
+            fields.length > 1
+            || fields[0].name.endsWith('[]')
+        ) {
+            const checkedValues = Array.from(fields)
+                .filter(function (field) {
+                    return field.type === 'checkbox'
+                        && field.checked;
+                })
+                .map(function (field) {
+                    return field.value;
+                });
+
+            return checkedValues;
+        }
+
+        const field = fields[0];
+
+        if (field.type === 'checkbox') {
+            return field.checked ? '1' : '0';
+        }
+
         return field.value;
+    }
+
+    function conditionMatches(
+        actualValue,
+        operator,
+        expectedValue
+    ) {
+        if (Array.isArray(actualValue)) {
+            const contains =
+                actualValue.includes(expectedValue);
+
+            return operator === 'not_equals'
+                ? !contains
+                : contains;
+        }
+
+        if (operator === 'equals') {
+            return actualValue === expectedValue;
+        }
+
+        if (operator === 'not_equals') {
+            return actualValue !== expectedValue;
+        }
+
+        return true;
     }
 
     function updateConditionalQuestions() {
@@ -732,15 +1041,12 @@ document.addEventListener('DOMContentLoaded', function () {
             const actualValue =
                 getQuestionValue(controllingQuestionId);
 
-            let shouldShow = false;
-
-            if (operator === 'equals') {
-                shouldShow =
-                    actualValue === expectedValue;
-            } else if (operator === 'not_equals') {
-                shouldShow =
-                    actualValue !== expectedValue;
-            }
+            const shouldShow =
+                conditionMatches(
+                    actualValue,
+                    operator,
+                    expectedValue
+                );
 
             if (shouldShow) {
                 container.style.display = '';
@@ -751,6 +1057,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 setRequiredState(container, false);
             }
         });
+
+        updateMultiCheckboxRequirements();
     }
 
     function clearQuestionValue(container) {
@@ -777,6 +1085,38 @@ document.addEventListener('DOMContentLoaded', function () {
         requiredFields.forEach(function (field) {
             field.required = enabled;
         });
+
+        container.dataset.conditionActive =
+            enabled ? '1' : '0';
+    }
+
+    function updateMultiCheckboxRequirements() {
+        questionContainers.forEach(function (container) {
+            const requiredCheckboxes =
+                container.querySelectorAll(
+                    '[data-checkbox-group-required="1"]'
+                );
+
+            if (!requiredCheckboxes.length) {
+                return;
+            }
+
+            const active =
+                container.dataset.conditionActive !== '0';
+
+            const anyChecked =
+                Array.from(requiredCheckboxes)
+                    .some(function (field) {
+                        return field.checked;
+                    });
+
+            requiredCheckboxes.forEach(function (field, index) {
+                field.required =
+                    active
+                    && !anyChecked
+                    && index === 0;
+            });
+        });
     }
 
     questionContainers.forEach(function (container) {
@@ -802,6 +1142,26 @@ document.addEventListener('DOMContentLoaded', function () {
             updateSmsPhoneRequirement();
         }
     });
+
+    if (languageSelector) {
+        languageSelector.addEventListener(
+            'change',
+            function () {
+                if (languageInput) {
+                    languageInput.value =
+                        languageSelector.value;
+                }
+
+                const url = new URL(window.location.href);
+                url.searchParams.set(
+                    'lang',
+                    languageSelector.value
+                );
+
+                window.location.href = url.toString();
+            }
+        );
+    }
 
     updateConditionalQuestions();
     updateSmsPhoneRequirement();

@@ -19,9 +19,12 @@ class Event
             'INSERT INTO events
                 (
                     title,
+                    title_es,
                     public_slug,
                     description,
+                    description_es,
                     location,
+                    location_es,
                     event_date,
                     start_time,
                     end_time,
@@ -33,14 +36,17 @@ class Event
                     created_by
                 )
              VALUES
-                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
 
         $statement->execute([
             $data['title'],
+            $data['title_es'] ?? null,
             $data['public_slug'],
             $data['description'] ?? null,
+            $data['description_es'] ?? null,
             $data['location'] ?? null,
+            $data['location_es'] ?? null,
             $data['event_date'],
             $data['start_time'],
             $data['end_time'],
@@ -72,8 +78,11 @@ class Event
             'UPDATE events
              SET
                 title = ?,
+                title_es = ?,
                 description = ?,
+                description_es = ?,
                 location = ?,
+                location_es = ?,
                 event_date = ?,
                 start_time = ?,
                 end_time = ?,
@@ -87,8 +96,11 @@ class Event
 
         $statement->execute([
             $data['title'],
+            $data['title_es'] ?? null,
             $data['description'] ?? null,
+            $data['description_es'] ?? null,
             $data['location'] ?? null,
+            $data['location_es'] ?? null,
             $data['event_date'],
             $data['start_time'],
             $data['end_time'],

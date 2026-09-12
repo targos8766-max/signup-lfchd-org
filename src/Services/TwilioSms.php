@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Boneblaze\SignupLfchdOrg\Services;
 
+use DateTimeImmutable;
 use RuntimeException;
 
 class TwilioSms
@@ -13,6 +14,7 @@ class TwilioSms
     private string $fromNumber;
     private string $messagingServiceSid;
     private string $apiBaseUrl;
+    private string $appUrl;
 
     public function __construct()
     {
@@ -26,7 +28,12 @@ class TwilioSms
             trim((string) ($_ENV['TWILIO_FROM_NUMBER'] ?? ''));
 
         $this->messagingServiceSid =
-            trim((string) ($_ENV['TWILIO_MESSAGING_SERVICE_SID'] ?? ''));
+            trim(
+                (string) (
+                    $_ENV['TWILIO_MESSAGING_SERVICE_SID']
+                    ?? ''
+                )
+            );
 
         $this->apiBaseUrl =
             rtrim(
@@ -39,15 +46,18 @@ class TwilioSms
                 '/'
             );
 
-        if ($this->accountSid === '') {
-            throw new RuntimeException(
-                'TWILIO_ACCOUNT_SID is not configured.'
+        $this->appUrl =
+            rtrim(
+                trim((string) ($_ENV['APP_URL'] ?? '')),
+                '/'
             );
-        }
 
-        if ($this->authToken === '') {
+        if (
+            $this->accountSid === ''
+            || $this->authToken === ''
+        ) {
             throw new RuntimeException(
-                'TWILIO_AUTH_TOKEN is not configured.'
+                'Twilio configuration is incomplete.'
             );
         }
 
@@ -56,13 +66,7 @@ class TwilioSms
             && $this->messagingServiceSid === ''
         ) {
             throw new RuntimeException(
-                'Configure either TWILIO_FROM_NUMBER or TWILIO_MESSAGING_SERVICE_SID.'
-            );
-        }
-
-        if (!function_exists('curl_init')) {
-            throw new RuntimeException(
-                'PHP cURL extension is required for Twilio SMS.'
+                'Twilio requires a From number or Messaging Service SID.'
             );
         }
     }
@@ -72,56 +76,71 @@ class TwilioSms
         array $slot,
         array $registration
     ): void {
-        $phone = trim(
-            (string) ($registration['phone'] ?? '')
-        );
-
-        if ($phone === '') {
-            return;
-        }
-
         if (
-            empty($registration['sms_opt_in'])
-            || (int) $registration['sms_opt_in'] !== 1
+            empty($registration['phone'])
+            || (int) ($registration['sms_opt_in'] ?? 0) !== 1
         ) {
             return;
         }
 
-        $eventTitle = trim(
-            (string) ($event['title'] ?? 'Event')
-        );
+        $language =
+            ($registration['preferred_language'] ?? 'en') === 'es'
+                ? 'es'
+                : 'en';
 
-        $start = new \DateTimeImmutable(
-            (string) $slot['start_datetime']
+        $eventTitle =
+            $language === 'es'
+            && !empty($event['title_es'])
+                ? $event['title_es']
+                : $event['title'];
+
+        $start = new DateTimeImmutable(
+            $slot['start_datetime']
         );
 
         $confirmationUrl =
-            $this->buildConfirmationUrl(
-                (string) $event['public_slug'],
-                (string) $registration['confirmation_code']
+            $this->appUrl
+            . '/event/'
+            . rawurlencode($event['public_slug'])
+            . '/confirmation/'
+            . rawurlencode(
+                $registration['confirmation_code']
             );
 
-        $body =
-            'LFCHD: You are registered for '
-            . $eventTitle
-            . ' on '
-            . $start->format('M j, Y')
-            . ' at '
-            . $start->format('g:i A')
-            . '. Details/cancel: '
-            . $confirmationUrl
-            . ' Reply STOP to unsubscribe.';
+        if ($language === 'es') {
+            $body =
+                'LFCHD: Está registrado para '
+                . $eventTitle
+                . ' el '
+                . $this->formatSpanishDate($start)
+                . ' a las '
+                . $start->format('g:i A')
+                . '. Detalles/cancelar: '
+                . $confirmationUrl
+                . ' Responda STOP para dejar de recibir mensajes.';
+        } else {
+            $body =
+                'LFCHD: You are registered for '
+                . $eventTitle
+                . ' on '
+                . $start->format('M j, Y')
+                . ' at '
+                . $start->format('g:i A')
+                . '. Details/cancel: '
+                . $confirmationUrl
+                . ' Reply STOP to unsubscribe.';
+        }
 
-        $this->send(
-            $phone,
+        $this->sendMessage(
+            $registration['phone'],
             $body
         );
     }
 
-    private function send(
+    public function sendMessage(
         string $to,
         string $body
-    ): void {
+    ): string {
         $url =
             $this->apiBaseUrl
             . '/Accounts/'
@@ -141,97 +160,101 @@ class TwilioSms
                 $this->fromNumber;
         }
 
-        $curl = curl_init($url);
+        $ch = curl_init($url);
 
-        if ($curl === false) {
+        if ($ch === false) {
             throw new RuntimeException(
                 'Unable to initialize Twilio request.'
             );
         }
 
         curl_setopt_array(
-            $curl,
+            $ch,
             [
                 CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => http_build_query(
-                    $postFields
-                ),
+                CURLOPT_POSTFIELDS =>
+                    http_build_query($postFields),
                 CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/x-www-form-urlencoded',
+                ],
                 CURLOPT_USERPWD =>
                     $this->accountSid
                     . ':'
                     . $this->authToken,
-                CURLOPT_HTTPAUTH => CURLAUTH_BASIC,
-                CURLOPT_TIMEOUT => 15,
-                CURLOPT_HTTPHEADER => [
-                    'Content-Type: application/x-www-form-urlencoded',
-                ],
+                CURLOPT_TIMEOUT => 20,
             ]
         );
 
-        $response = curl_exec($curl);
+        $response = curl_exec($ch);
 
         if ($response === false) {
-            $error = curl_error($curl);
-            curl_close($curl);
+            $error = curl_error($ch);
+            curl_close($ch);
 
             throw new RuntimeException(
-                'Twilio request failed: ' . $error
+                'Twilio request failed: '
+                . $error
             );
         }
 
-        $httpCode =
+        $statusCode =
             (int) curl_getinfo(
-                $curl,
-                CURLINFO_HTTP_CODE
+                $ch,
+                CURLINFO_RESPONSE_CODE
             );
 
-        curl_close($curl);
+        curl_close($ch);
 
-        if ($httpCode < 200 || $httpCode >= 300) {
-            $message = 'Twilio returned HTTP ' . $httpCode . '.';
-
-            $decoded = json_decode(
-                (string) $response,
-                true
+        if (
+            $statusCode < 200
+            || $statusCode >= 300
+        ) {
+            throw new RuntimeException(
+                'Twilio returned HTTP '
+                . $statusCode
+                . ': '
+                . $response
             );
-
-            if (
-                is_array($decoded)
-                && !empty($decoded['message'])
-            ) {
-                $message .= ' ' . $decoded['message'];
-            }
-
-            throw new RuntimeException($message);
         }
-    }
 
-    private function buildConfirmationUrl(
-        string $slug,
-        string $confirmationCode
-    ): string {
-        $appUrl = rtrim(
-            trim(
-                (string) (
-                    $_ENV['APP_URL']
-                    ?? ''
-                )
-            ),
-            '/'
+        $decoded = json_decode(
+            $response,
+            true
         );
 
-        if ($appUrl === '') {
-            throw new RuntimeException(
-                'APP_URL is not configured.'
-            );
+        if (
+            is_array($decoded)
+            && !empty($decoded['sid'])
+        ) {
+            return (string) $decoded['sid'];
         }
 
-        return
-            $appUrl
-            . '/event/'
-            . rawurlencode($slug)
-            . '/confirmation/'
-            . rawurlencode($confirmationCode);
+        return '';
+    }
+
+    private function formatSpanishDate(
+        DateTimeImmutable $date
+    ): string {
+        $months = [
+            1 => 'ene',
+            2 => 'feb',
+            3 => 'mar',
+            4 => 'abr',
+            5 => 'may',
+            6 => 'jun',
+            7 => 'jul',
+            8 => 'ago',
+            9 => 'sep',
+            10 => 'oct',
+            11 => 'nov',
+            12 => 'dic',
+        ];
+
+        return $date->format('j')
+            . ' '
+            . $months[(int) $date->format('n')]
+            . ' '
+            . $date->format('Y');
     }
 }

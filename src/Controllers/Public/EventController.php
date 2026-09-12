@@ -24,6 +24,7 @@ class EventController
         );
 
         $statement->execute([$slug]);
+
         $event = $statement->fetch();
 
         if (!$event) {
@@ -32,58 +33,71 @@ class EventController
             return;
         }
 
-        $now = new DateTimeImmutable();
+        $language =
+            (($_GET['lang'] ?? 'en') === 'es')
+                ? 'es'
+                : 'en';
 
-        $registrationOpen = true;
-        $registrationMessage = null;
+        [$registrationOpen, $registrationMessage] =
+            $this->registrationStatus(
+                $event,
+                $language
+            );
 
-        if ($event['status'] !== 'open') {
-            $registrationOpen = false;
+        $slots = $this->getSlots(
+            (int) $event['id']
+        );
 
-            $registrationMessage = match ($event['status']) {
-                'draft' => 'Registration is not yet open.',
-                'closed' => 'Registration for this event is closed.',
-                'cancelled' => 'This event has been cancelled.',
-                default => 'Registration is unavailable.',
-            };
-        }
+        $questions = $this->getQuestions(
+            (int) $event['id']
+        );
 
-        if (
-            $registrationOpen
-            && !empty($event['signup_open_at'])
-            && $now < new DateTimeImmutable($event['signup_open_at'])
-        ) {
-            $registrationOpen = false;
-            $registrationMessage = 'Registration has not opened yet.';
-        }
+        $old = [
+            'preferred_language' => $language,
+        ];
 
-        if (
-            $registrationOpen
-            && !empty($event['signup_close_at'])
-            && $now >= new DateTimeImmutable($event['signup_close_at'])
-        ) {
-            $registrationOpen = false;
-            $registrationMessage = 'Registration is closed.';
-        }
+        require dirname(__DIR__, 3)
+            . '/templates/public/event.php';
+    }
+
+    private function getQuestions(int $eventId): array
+    {
+        $pdo = Database::connection();
+
+        $statement = $pdo->prepare(
+            'SELECT *
+             FROM event_questions
+             WHERE event_id = ?
+             AND enabled = 1
+             ORDER BY sort_order, id'
+        );
+
+        $statement->execute([$eventId]);
+
+        return $statement->fetchAll();
+    }
+
+    private function getSlots(int $eventId): array
+    {
+        $pdo = Database::connection();
 
         $slotStatement = $pdo->prepare(
             'SELECT
                 es.*,
-
                 (
                     SELECT COUNT(*)
                     FROM registrations r
                     WHERE r.slot_id = es.id
                       AND r.status = "confirmed"
                 ) AS registered_count
-
              FROM event_slots es
              WHERE es.event_id = ?
                AND es.enabled = 1
              ORDER BY es.start_datetime'
         );
 
-        $slotStatement->execute([$event['id']]);
+        $slotStatement->execute([$eventId]);
+
         $slots = $slotStatement->fetchAll();
 
         foreach ($slots as &$slot) {
@@ -96,29 +110,100 @@ class EventController
 
         unset($slot);
 
-        $questions = $this->getQuestions(
-            (int) $event['id']
-        );
-
-        require dirname(__DIR__, 3)
-            . '/templates/public/event.php';
+        return $slots;
     }
 
-    private function getQuestions(int $eventId): array
-    {
-        $pdo = Database::connection();
+    private function registrationStatus(
+        array $event,
+        string $language
+    ): array {
+        $now = new DateTimeImmutable();
 
-        $statement = $pdo->prepare(
-            'SELECT *
-            FROM event_questions
-            WHERE event_id = ?
-            AND enabled = 1
-            ORDER BY sort_order, id'
+        $messages = $language === 'es'
+            ? [
+                'draft' => 'El registro aún no está abierto.',
+                'closed' => 'El registro para este evento está cerrado.',
+                'cancelled' => 'Este evento ha sido cancelado.',
+                'unavailable' => 'El registro no está disponible.',
+                'not_open' => 'El registro aún no ha comenzado.',
+                'closed_now' => 'El registro está cerrado.',
+            ]
+            : [
+                'draft' => 'Registration is not yet open.',
+                'closed' => 'Registration for this event is closed.',
+                'cancelled' => 'This event has been cancelled.',
+                'unavailable' => 'Registration is unavailable.',
+                'not_open' => 'Registration has not opened yet.',
+                'closed_now' => 'Registration is closed.',
+            ];
+
+        $registrationOpen = true;
+        $registrationMessage = null;
+
+        if ($event['status'] !== 'open') {
+            $registrationOpen = false;
+
+            $registrationMessage = match ($event['status']) {
+                'draft' => $messages['draft'],
+                'closed' => $messages['closed'],
+                'cancelled' => $messages['cancelled'],
+                default => $messages['unavailable'],
+            };
+        }
+
+        if (
+            $registrationOpen
+            && !empty($event['signup_open_at'])
+            && $now < new DateTimeImmutable($event['signup_open_at'])
+        ) {
+            $registrationOpen = false;
+            $registrationMessage = $messages['not_open'];
+        }
+
+        if (
+            $registrationOpen
+            && !empty($event['signup_close_at'])
+            && $now >= new DateTimeImmutable($event['signup_close_at'])
+        ) {
+            $registrationOpen = false;
+            $registrationMessage = $messages['closed_now'];
+        }
+
+        return [
+            $registrationOpen,
+            $registrationMessage,
+        ];
+    }
+
+    private function localizedQuestionText(
+        array $question,
+        string $language
+    ): string {
+        if (
+            $language === 'es'
+            && !empty($question['question_text_es'])
+        ) {
+            return $question['question_text_es'];
+        }
+
+        return $question['question_text'];
+    }
+
+    private function canonicalOptions(
+        array $question
+    ): array {
+        $options = json_decode(
+            $question['options_json'] ?? '[]',
+            true
         );
 
-        $statement->execute([$eventId]);
+        if (!is_array($options)) {
+            return [];
+        }
 
-        return $statement->fetchAll();
+        return array_values(
+            array_map('strval', $options)
+        );
     }
 
     private function questionIsActive(
@@ -152,7 +237,26 @@ class EventController
             ?? '';
 
         if (is_array($actualValue)) {
-            $actualValue = '';
+            $actualValues = array_map(
+                'strval',
+                $actualValue
+            );
+
+            $contains = in_array(
+                $expectedValue,
+                $actualValues,
+                true
+            );
+
+            if ($operator === 'equals') {
+                return $contains;
+            }
+
+            if ($operator === 'not_equals') {
+                return !$contains;
+            }
+
+            return true;
         }
 
         $actualValue =
@@ -175,12 +279,13 @@ class EventController
 
         $statement = $pdo->prepare(
             'SELECT *
-            FROM events
-            WHERE public_slug = ?
-            LIMIT 1'
+             FROM events
+             WHERE public_slug = ?
+             LIMIT 1'
         );
 
         $statement->execute([$slug]);
+
         $event = $statement->fetch();
 
         if (!$event) {
@@ -188,6 +293,11 @@ class EventController
             echo 'Event not found.';
             return;
         }
+
+        $preferredLanguage =
+            (($_POST['preferred_language'] ?? 'en') === 'es')
+                ? 'es'
+                : 'en';
 
         $slotId = (int) ($_POST['slot_id'] ?? 0);
 
@@ -213,10 +323,6 @@ class EventController
 
         $smsPhone = null;
 
-        $department = trim(
-            (string) ($_POST['department'] ?? '')
-        );
-
         $questions = $this->getQuestions(
             (int) $event['id']
         );
@@ -230,16 +336,48 @@ class EventController
 
         $errors = [];
 
+        $messages = $preferredLanguage === 'es'
+            ? [
+                'select_time' => 'Seleccione una hora.',
+                'first_name' => 'El nombre es obligatorio.',
+                'last_name' => 'El apellido es obligatorio.',
+                'email' => 'Ingrese una dirección de correo electrónico válida.',
+                'phone_required' => 'Se requiere un número de teléfono si elige recibir notificaciones por SMS.',
+                'phone_invalid' => 'Ingrese un número de teléfono válido de EE. UU. para recibir notificaciones por SMS.',
+                'not_open' => 'El registro no está abierto actualmente.',
+                'not_started' => 'El registro aún no ha comenzado.',
+                'closed' => 'El registro está cerrado.',
+                'required_suffix' => ' es obligatorio.',
+                'invalid_option_prefix' => 'Seleccione una opción válida para ',
+                'slot_unavailable' => 'La hora seleccionada ya no está disponible.',
+                'slot_full' => 'La hora seleccionada está llena. Seleccione otra hora.',
+            ]
+            : [
+                'select_time' => 'Please select a time.',
+                'first_name' => 'First name is required.',
+                'last_name' => 'Last name is required.',
+                'email' => 'Please enter a valid email address.',
+                'phone_required' => 'A phone number is required if you choose SMS notifications.',
+                'phone_invalid' => 'Please enter a valid U.S. phone number for SMS notifications.',
+                'not_open' => 'Registration is not currently open.',
+                'not_started' => 'Registration has not opened yet.',
+                'closed' => 'Registration is closed.',
+                'required_suffix' => ' is required.',
+                'invalid_option_prefix' => 'Please select a valid option for ',
+                'slot_unavailable' => 'The selected time is no longer available.',
+                'slot_full' => 'The selected time is full. Please choose another time.',
+            ];
+
         if ($slotId < 1) {
-            $errors[] = 'Please select a time.';
+            $errors[] = $messages['select_time'];
         }
 
         if ($firstName === '') {
-            $errors[] = 'First name is required.';
+            $errors[] = $messages['first_name'];
         }
 
         if ($lastName === '') {
-            $errors[] = 'Last name is required.';
+            $errors[] = $messages['last_name'];
         }
 
         if (
@@ -249,21 +387,20 @@ class EventController
                 FILTER_VALIDATE_EMAIL
             )
         ) {
-            $errors[] =
-                'Please enter a valid email address.';
+            $errors[] = $messages['email'];
         }
 
         if ($smsOptIn) {
             if ($phone === '') {
                 $errors[] =
-                    'A phone number is required if you choose SMS notifications.';
+                    $messages['phone_required'];
             } else {
                 $smsPhone =
                     $this->normalizeSmsPhone($phone);
 
                 if ($smsPhone === null) {
                     $errors[] =
-                        'Please enter a valid U.S. phone number for SMS notifications.';
+                        $messages['phone_invalid'];
                 }
             }
         }
@@ -272,7 +409,7 @@ class EventController
 
         if ($event['status'] !== 'open') {
             $errors[] =
-                'Registration is not currently open.';
+                $messages['not_open'];
         }
 
         if (
@@ -283,7 +420,7 @@ class EventController
                 )
         ) {
             $errors[] =
-                'Registration has not opened yet.';
+                $messages['not_started'];
         }
 
         if (
@@ -294,7 +431,7 @@ class EventController
                 )
         ) {
             $errors[] =
-                'Registration is closed.';
+                $messages['closed'];
         }
 
         foreach ($questions as $question) {
@@ -314,6 +451,55 @@ class EventController
                 $submittedAnswers[$questionId]
                 ?? '';
 
+            $questionText =
+                $this->localizedQuestionText(
+                    $question,
+                    $preferredLanguage
+                );
+
+            $options =
+                $this->canonicalOptions($question);
+
+            $isMultiCheckbox =
+                $question['question_type'] === 'checkbox'
+                && $options !== [];
+
+            if ($isMultiCheckbox) {
+                $answers = is_array($answer)
+                    ? array_values(
+                        array_map('strval', $answer)
+                    )
+                    : [];
+
+                $answers = array_values(
+                    array_intersect(
+                        $answers,
+                        $options
+                    )
+                );
+
+                if (
+                    (int) $question['required'] === 1
+                    && $answers === []
+                ) {
+                    $errors[] =
+                        $questionText
+                        . $messages['required_suffix'];
+                }
+
+                if (
+                    is_array($answer)
+                    && count($answers) !== count($answer)
+                ) {
+                    $errors[] =
+                        $messages['invalid_option_prefix']
+                        . $questionText
+                        . '.';
+                }
+
+                continue;
+            }
+
             if (is_array($answer)) {
                 $answer = '';
             }
@@ -329,9 +515,8 @@ class EventController
                 && $answer !== '1'
             ) {
                 $errors[] =
-                    $question['question_text']
-                    . ' is required.';
-
+                    $questionText
+                    . $messages['required_suffix'];
                 continue;
             }
 
@@ -342,9 +527,8 @@ class EventController
                 && $answer === ''
             ) {
                 $errors[] =
-                    $question['question_text']
-                    . ' is required.';
-
+                    $questionText
+                    . $messages['required_suffix'];
                 continue;
             }
 
@@ -352,26 +536,16 @@ class EventController
                 $question['question_type']
                     === 'select'
                 && $answer !== ''
-            ) {
-                $options = json_decode(
-                    $question['options_json']
-                        ?? '[]',
+                && !in_array(
+                    $answer,
+                    $options,
                     true
-                );
-
-                if (
-                    !is_array($options)
-                    || !in_array(
-                        $answer,
-                        $options,
-                        true
-                    )
-                ) {
-                    $errors[] =
-                        'Please select a valid option for '
-                        . $question['question_text']
-                        . '.';
-                }
+                )
+            ) {
+                $errors[] =
+                    $messages['invalid_option_prefix']
+                    . $questionText
+                    . '.';
             }
         }
 
@@ -379,7 +553,8 @@ class EventController
             $this->showWithErrors(
                 $event,
                 $errors,
-                $_POST
+                $_POST,
+                $preferredLanguage
             );
 
             return;
@@ -405,7 +580,7 @@ class EventController
 
             if (!$slot || !(int) $slot['enabled']) {
                 throw new \RuntimeException(
-                    'The selected time is no longer available.'
+                    $messages['slot_unavailable']
                 );
             }
 
@@ -419,11 +594,12 @@ class EventController
             $countStatement->execute([$slotId]);
 
             $registered = (int) $countStatement->fetchColumn();
+
             $capacity = (int) $slot['capacity'];
 
             if ($registered >= $capacity) {
                 throw new \RuntimeException(
-                    'The selected time is full. Please choose another time.'
+                    $messages['slot_full']
                 );
             }
 
@@ -440,7 +616,7 @@ class EventController
                         phone,
                         sms_opt_in,
                         sms_opt_in_at,
-                        department,
+                        preferred_language,
                         confirmation_code,
                         status
                     )
@@ -459,7 +635,7 @@ class EventController
                 $smsOptIn
                     ? (new DateTimeImmutable())->format('Y-m-d H:i:s')
                     : null,
-                $department !== '' ? $department : null,
+                $preferredLanguage,
                 $confirmationCode,
             ]);
 
@@ -493,6 +669,39 @@ class EventController
                 $answer =
                     $submittedAnswers[$questionId]
                     ?? '';
+
+                $options =
+                    $this->canonicalOptions($question);
+
+                $isMultiCheckbox =
+                    $question['question_type'] === 'checkbox'
+                    && $options !== [];
+
+                if ($isMultiCheckbox) {
+                    $answers = is_array($answer)
+                        ? array_values(
+                            array_intersect(
+                                array_map('strval', $answer),
+                                $options
+                            )
+                        )
+                        : [];
+
+                    if ($answers === []) {
+                        continue;
+                    }
+
+                    $answerInsert->execute([
+                        $registrationId,
+                        $questionId,
+                        json_encode(
+                            $answers,
+                            JSON_UNESCAPED_UNICODE
+                        ),
+                    ]);
+
+                    continue;
+                }
 
                 if (is_array($answer)) {
                     $answer = '';
@@ -539,9 +748,8 @@ class EventController
                     ? $smsPhone
                     : ($phone !== '' ? $phone : null),
                 'sms_opt_in' => $smsOptIn ? 1 : 0,
-                'department' => $department !== ''
-                    ? $department
-                    : null,
+                'preferred_language' =>
+                    $preferredLanguage,
                 'confirmation_code' =>
                     $confirmationCode,
                 'status' => 'confirmed',
@@ -603,7 +811,8 @@ class EventController
             $this->showWithErrors(
                 $event,
                 [$e->getMessage()],
-                $_POST
+                $_POST,
+                $preferredLanguage
             );
         }
     }
@@ -621,7 +830,9 @@ class EventController
                 'SELECT
                     r.*,
                     e.title,
+                    e.title_es,
                     e.location,
+                    e.location_es,
                     e.public_slug,
                     es.start_datetime,
                     es.end_datetime
@@ -668,7 +879,11 @@ class EventController
                 $pdo->rollBack();
 
                 http_response_code(400);
-                echo 'This registration cannot be cancelled.';
+
+                echo $registration['preferred_language'] === 'es'
+                    ? 'Este registro no se puede cancelar.'
+                    : 'This registration cannot be cancelled.';
+
                 return;
             }
 
@@ -731,8 +946,11 @@ class EventController
             'SELECT
                 r.*,
                 e.title,
+                e.title_es,
                 e.description,
+                e.description_es,
                 e.location,
+                e.location_es,
                 e.event_date,
                 e.public_slug,
                 es.start_datetime,
@@ -767,46 +985,24 @@ class EventController
     private function showWithErrors(
         array $event,
         array $errors,
-        array $old
+        array $old,
+        string $language
     ): void {
-        $pdo = Database::connection();
-
-        $registrationOpen = true;
-        $registrationMessage = null;
-
-        $slotStatement = $pdo->prepare(
-            'SELECT
-                es.*,
-
-                (
-                    SELECT COUNT(*)
-                    FROM registrations r
-                    WHERE r.slot_id = es.id
-                      AND r.status = "confirmed"
-                ) AS registered_count
-
-             FROM event_slots es
-             WHERE es.event_id = ?
-               AND es.enabled = 1
-             ORDER BY es.start_datetime'
-        );
-
-        $slotStatement->execute([$event['id']]);
-        $slots = $slotStatement->fetchAll();
-
-        foreach ($slots as &$slot) {
-            $slot['remaining'] = max(
-                0,
-                (int) $slot['capacity']
-                - (int) $slot['registered_count']
+        [$registrationOpen, $registrationMessage] =
+            $this->registrationStatus(
+                $event,
+                $language
             );
-        }
 
-        unset($slot);
+        $slots = $this->getSlots(
+            (int) $event['id']
+        );
 
         $questions = $this->getQuestions(
             (int) $event['id']
         );
+
+        $old['preferred_language'] = $language;
 
         require dirname(__DIR__, 3)
             . '/templates/public/event.php';

@@ -102,8 +102,11 @@ class EventController
         }
 
         $title = trim($_POST['title'] ?? '');
+        $titleEs = trim($_POST['title_es'] ?? '');
         $description = trim($_POST['description'] ?? '');
+        $descriptionEs = trim($_POST['description_es'] ?? '');
         $location = trim($_POST['location'] ?? '');
+        $locationEs = trim($_POST['location_es'] ?? '');
         $eventDate = $_POST['event_date'] ?? '';
         $startTime = $_POST['start_time'] ?? '';
         $endTime = $_POST['end_time'] ?? '';
@@ -174,8 +177,11 @@ class EventController
         if ($errors !== []) {
             $event = array_merge($event, [
                 'title' => $title,
+                'title_es' => $titleEs,
                 'description' => $description,
+                'description_es' => $descriptionEs,
                 'location' => $location,
+                'location_es' => $locationEs,
                 'event_date' => $eventDate,
                 'start_time' => $startTime,
                 'end_time' => $endTime,
@@ -194,8 +200,11 @@ class EventController
 
         $eventModel->update($eventId, [
             'title' => $title,
+            'title_es' => $titleEs !== '' ? $titleEs : null,
             'description' => $description !== '' ? $description : null,
+            'description_es' => $descriptionEs !== '' ? $descriptionEs : null,
             'location' => $location !== '' ? $location : null,
+            'location_es' => $locationEs !== '' ? $locationEs : null,
             'event_date' => $eventDate,
             'start_time' => $startTime,
             'end_time' => $endTime,
@@ -241,9 +250,12 @@ class EventController
 
             $newEventId = $eventModel->create([
                 'title' => $event['title'] . ' - Copy',
+                'title_es' => $event['title_es'],
                 'public_slug' => bin2hex(random_bytes(12)),
                 'description' => $event['description'],
+                'description_es' => $event['description_es'],
                 'location' => $event['location'],
+                'location_es' => $event['location_es'],
                 'event_date' => $event['event_date'],
                 'start_time' => $event['start_time'],
                 'end_time' => $event['end_time'],
@@ -257,9 +269,6 @@ class EventController
                     ?? 'unknown',
             ]);
 
-            /*
-             * Copy time slots.
-             */
             $statement = $pdo->prepare(
                 'SELECT
                     start_datetime,
@@ -298,19 +307,14 @@ class EventController
                 ]);
             }
 
-            /*
-             * Load all custom questions for the source event.
-             *
-             * We copy the questions first without their conditional
-             * relationship. This lets every new question receive its
-             * own ID before we rebuild the dependencies.
-             */
             $statement = $pdo->prepare(
                 'SELECT
                     id,
                     question_text,
+                    question_text_es,
                     question_type,
                     options_json,
+                    options_json_es,
                     required,
                     sort_order,
                     enabled,
@@ -331,8 +335,10 @@ class EventController
                     (
                         event_id,
                         question_text,
+                        question_text_es,
                         question_type,
                         options_json,
+                        options_json_es,
                         required,
                         sort_order,
                         enabled,
@@ -341,21 +347,19 @@ class EventController
                         conditional_value
                     )
                 VALUES
-                    (?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL)'
+                    (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL)'
             );
 
-            /*
-             * Map:
-             * original question ID => copied question ID
-             */
             $questionIdMap = [];
 
             foreach ($questions as $question) {
                 $insertQuestion->execute([
                     $newEventId,
                     $question['question_text'],
+                    $question['question_text_es'],
                     $question['question_type'],
                     $question['options_json'],
+                    $question['options_json_es'],
                     $question['required'],
                     $question['sort_order'],
                     $question['enabled'],
@@ -366,15 +370,6 @@ class EventController
                 ] = (int) $pdo->lastInsertId();
             }
 
-            /*
-             * Second pass:
-             * Rebuild conditional relationships using the copied IDs.
-             *
-             * Example:
-             * Original Question 12 depends on Original Question 10.
-             * The copied Question 12 must depend on copied Question 10,
-             * not on the original event's Question 10.
-             */
             $updateCondition = $pdo->prepare(
                 'UPDATE event_questions
                 SET
@@ -400,11 +395,6 @@ class EventController
                     $questionIdMap[$originalConditionQuestionId]
                     ?? null;
 
-                /*
-                 * If the controlling question was not part of this
-                 * event for some unexpected reason, do not create a
-                 * cross-event dependency.
-                 */
                 if ($newConditionQuestionId === null) {
                     continue;
                 }
@@ -500,8 +490,11 @@ class EventController
     public function store(): void
     {
         $title = trim($_POST['title'] ?? '');
+        $titleEs = trim($_POST['title_es'] ?? '');
         $description = trim($_POST['description'] ?? '');
+        $descriptionEs = trim($_POST['description_es'] ?? '');
         $location = trim($_POST['location'] ?? '');
+        $locationEs = trim($_POST['location_es'] ?? '');
         $eventDate = $_POST['event_date'] ?? '';
         $startTime = $_POST['start_time'] ?? '';
         $endTime = $_POST['end_time'] ?? '';
@@ -554,9 +547,12 @@ class EventController
 
             $eventId = $eventModel->create([
                 'title' => $title,
+                'title_es' => $titleEs !== '' ? $titleEs : null,
                 'public_slug' => $slug,
                 'description' => $description !== '' ? $description : null,
+                'description_es' => $descriptionEs !== '' ? $descriptionEs : null,
                 'location' => $location !== '' ? $location : null,
+                'location_es' => $locationEs !== '' ? $locationEs : null,
                 'event_date' => $eventDate,
                 'start_time' => $startTime,
                 'end_time' => $endTime,

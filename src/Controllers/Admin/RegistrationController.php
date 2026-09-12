@@ -231,7 +231,6 @@ class RegistrationController
                     'last_name' => $registration['last_name'],
                     'email' => $registration['email'],
                     'phone' => $registration['phone'],
-                    'department' => $registration['department'],
                     'confirmation_code' =>
                         $registration['confirmation_code'],
                     'status' => $registration['status'],
@@ -303,7 +302,6 @@ class RegistrationController
                 r.last_name,
                 r.email,
                 r.phone,
-                r.department,
                 r.status,
                 r.confirmation_code,
                 r.created_at,
@@ -391,7 +389,6 @@ class RegistrationController
             'Last Name',
             'Email',
             'Phone',
-            'Department',
             'Date',
             'Start Time',
             'End Time',
@@ -420,7 +417,6 @@ class RegistrationController
                 $registration['last_name'],
                 $registration['email'],
                 $registration['phone'],
-                $registration['department'],
                 $start->format('m/d/Y'),
                 $start->format('g:i A'),
                 $end->format('g:i A'),
@@ -549,10 +545,6 @@ class RegistrationController
             (string) ($_POST['phone'] ?? '')
         );
 
-        $department = trim(
-            (string) ($_POST['department'] ?? '')
-        );
-
         $submittedAnswers = $_POST['answers'] ?? [];
 
         if (!is_array($submittedAnswers)) {
@@ -664,7 +656,6 @@ class RegistrationController
                     'last_name' => $lastName,
                     'email' => $email,
                     'phone' => $phone,
-                    'department' => $department,
                 ]
             );
 
@@ -714,8 +705,7 @@ class RegistrationController
                     first_name = ?,
                     last_name = ?,
                     email = ?,
-                    phone = ?,
-                    department = ?
+                    phone = ?
                 WHERE id = ?
                 AND event_id = ?'
             );
@@ -725,7 +715,6 @@ class RegistrationController
                 $lastName,
                 $email !== '' ? $email : null,
                 $phone !== '' ? $phone : null,
-                $department !== '' ? $department : null,
                 $registrationId,
                 $eventId,
             ]);

@@ -174,25 +174,6 @@ require dirname(__DIR__) . '/partials/header.php';
 
                     </div>
 
-                    <div class="mb-4">
-
-                        <label class="form-label">
-                            Department
-                        </label>
-
-                        <input
-                            type="text"
-                            name="department"
-                            class="form-control"
-                            value="<?= htmlspecialchars(
-                                $registration['department'] ?? '',
-                                ENT_QUOTES,
-                                'UTF-8'
-                            ) ?>"
-                        >
-
-                    </div>
-
                     <?php if (!empty($questions)): ?>
 
                         <hr class="my-4">
