@@ -15,6 +15,7 @@ class TwilioSms
     private string $messagingServiceSid;
     private string $apiBaseUrl;
     private string $appUrl;
+    private SmsContactService $smsContacts;
 
     public function __construct()
     {
@@ -52,6 +53,8 @@ class TwilioSms
                 '/'
             );
 
+        $this->smsContacts = new SmsContactService();
+
         if (
             $this->accountSid === ''
             || $this->authToken === ''
@@ -79,6 +82,19 @@ class TwilioSms
         if (
             empty($registration['phone'])
             || (int) ($registration['sms_opt_in'] ?? 0) !== 1
+        ) {
+            return;
+        }
+
+        /*
+         * Registration-level consent is not allowed to override a prior
+         * global STOP request. The recipient must opt back in through
+         * Twilio/START before application SMS can resume.
+         */
+        if (
+            !$this->smsContacts->canReceiveSms(
+                (string) $registration['phone']
+            )
         ) {
             return;
         }
@@ -132,15 +148,36 @@ class TwilioSms
         }
 
         $this->sendMessage(
-            $registration['phone'],
+            (string) $registration['phone'],
             $body
         );
     }
 
+    /**
+     * Sends an SMS and returns the Twilio Message SID.
+     *
+     * Returns an empty string when the number is globally opted out.
+     */
     public function sendMessage(
         string $to,
         string $body
     ): string {
+        $to = $this->smsContacts->normalizePhoneNumber($to);
+
+        if ($to === '') {
+            throw new RuntimeException(
+                'SMS recipient phone number is invalid.'
+            );
+        }
+
+        /*
+         * Central enforcement point. This protects confirmations as well as
+         * any future reminder or administrative SMS that uses sendMessage().
+         */
+        if (!$this->smsContacts->canReceiveSms($to)) {
+            return '';
+        }
+
         $url =
             $this->apiBaseUrl
             . '/Accounts/'

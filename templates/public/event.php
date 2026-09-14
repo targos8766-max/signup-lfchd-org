@@ -94,8 +94,8 @@ $labels = $language === 'es'
         'last_name' => 'Apellido',
         'email' => 'Correo electrónico',
         'phone' => 'Teléfono',
-        'sms_opt_in' => 'Sí, deseo recibir mensajes de texto sobre este evento.',
-        'sms_note' => 'Pueden aplicarse tarifas de mensajes y datos. Responda STOP para dejar de recibir mensajes.',
+        'sms_opt_in' => 'Acepto recibir mensajes de texto de LFCHD relacionados con este registro.',
+        'sms_note' => 'Los mensajes pueden incluir confirmaciones de registro, recordatorios, información de programación y actualizaciones relacionadas con el evento. La frecuencia de los mensajes varía. Pueden aplicarse tarifas de mensajes y datos. Responda STOP para dejar de recibir mensajes o HELP para obtener ayuda. El consentimiento para recibir mensajes de texto es opcional y no es necesario para registrarse.',
         'additional_info' => 'Información adicional',
         'required' => 'Obligatorio',
         'submit' => 'Registrarme',
@@ -115,8 +115,8 @@ $labels = $language === 'es'
         'last_name' => 'Last Name',
         'email' => 'Email',
         'phone' => 'Phone',
-        'sms_opt_in' => 'Yes, I would like to receive text messages about this event.',
-        'sms_note' => 'Message and data rates may apply. Reply STOP to unsubscribe.',
+        'sms_opt_in' => 'I agree to receive text messages from LFCHD related to this registration.',
+        'sms_note' => 'Messages may include registration confirmations, reminders, scheduling information, and event-related updates. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help. Consent to receive text messages is optional and is not required to register.',
         'additional_info' => 'Additional Information',
         'required' => 'Required',
         'submit' => 'Register',
@@ -366,6 +366,17 @@ $registrationStatus = $registrationStatus ?? ['open' => true, 'message' => ''];
                                         </label>
                                         <div class="form-text">
                                             <?= htmlspecialchars($labels['sms_note'], ENT_QUOTES, 'UTF-8') ?>
+                                            <?php if ($language === 'es'): ?>
+                                                Consulte nuestra
+                                                <a href="/privacy" target="_blank" rel="noopener">Política de privacidad</a>
+                                                y nuestros
+                                                <a href="/terms" target="_blank" rel="noopener">Términos y condiciones</a>.
+                                            <?php else: ?>
+                                                See our
+                                                <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>
+                                                and
+                                                <a href="/terms" target="_blank" rel="noopener">Terms &amp; Conditions</a>.
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 </div>
@@ -519,6 +530,14 @@ $registrationStatus = $registrationStatus ?? ['open' => true, 'message' => ''];
     <div class="container py-4">
         <div class="text-center small">
             Lexington-Fayette County Health Department
+            <span class="mx-1">·</span>
+            <a href="/privacy">
+                <?= $language === 'es' ? 'Política de privacidad' : 'Privacy Policy' ?>
+            </a>
+            <span class="mx-1">·</span>
+            <a href="/terms">
+                <?= $language === 'es' ? 'Términos y condiciones' : 'Terms &amp; Conditions' ?>
+            </a>
         </div>
     </div>
 </footer>

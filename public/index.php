@@ -10,6 +10,7 @@ use Boneblaze\SignupLfchdOrg\Controllers\Admin\DashboardController;
 use Boneblaze\SignupLfchdOrg\Controllers\Public\EventController as PublicEventController;
 use Boneblaze\SignupLfchdOrg\Controllers\Admin\RegistrationController;
 use Boneblaze\SignupLfchdOrg\Controllers\Admin\QuestionController;
+use Boneblaze\SignupLfchdOrg\Controllers\Webhook\TwilioController;
 use Dotenv\Dotenv;
 
 ini_set('session.use_strict_mode', '1');
@@ -31,8 +32,27 @@ $path = parse_url(
 
 $method = $_SERVER['REQUEST_METHOD'];
 
-if ($method === 'POST') {
+$isTwilioWebhook =
+    $method === 'POST'
+    && $path === '/webhooks/twilio/incoming';
+
+if (
+    $method === 'POST'
+    && !$isTwilioWebhook
+) {
     Csrf::enforce();
+}
+
+/*
+ * Twilio webhook.
+ *
+ * This route is intentionally exempt from the application's CSRF
+ * protection because Twilio cannot provide our session CSRF token.
+ * TwilioController independently validates the X-Twilio-Signature.
+ */
+if ($isTwilioWebhook) {
+    (new TwilioController())->incoming();
+    exit;
 }
 
 /*
@@ -79,6 +99,25 @@ if (
     EntraAuth::logout();
 
     header('Location: /');
+    exit;
+}
+
+/*
+ * Public legal/compliance pages
+ */
+if (
+    $method === 'GET'
+    && $path === '/privacy'
+) {
+    require dirname(__DIR__) . '/templates/public/privacy.php';
+    exit;
+}
+
+if (
+    $method === 'GET'
+    && $path === '/terms'
+) {
+    require dirname(__DIR__) . '/templates/public/terms.php';
     exit;
 }
 
