@@ -1,1172 +1,607 @@
 <?php
-
-use Boneblaze\SignupLfchdOrg\Services\Csrf;
-
 $language = $language ?? ($old['preferred_language'] ?? 'en');
 $language = $language === 'es' ? 'es' : 'en';
 
-$translations = [
-    'en' => [
-        'preferred_language' => 'Preferred Language',
-        'english' => 'English',
-        'spanish' => 'Español',
-        'date' => 'Date',
-        'location' => 'Location',
-        'select_time' => 'Select a Time',
-        'no_times' => 'There are currently no available appointment times.',
-        'seat' => 'seat',
-        'seats' => 'seats',
-        'remaining' => 'remaining',
-        'full' => 'Full',
-        'your_information' => 'Your Information',
-        'first_name' => 'First Name',
-        'last_name' => 'Last Name',
-        'email' => 'Email',
-        'phone' => 'Phone',
-        'sms_label' => 'Send me registration confirmation and reminder text messages from LFCHD.',
-        'sms_help' => 'Message frequency varies. Message and data rates may apply. Reply STOP to unsubscribe. SMS consent is optional and is not required to register.',
-        'additional_information' => 'Additional Information',
-        'select_option' => 'Select an option',
-        'complete_signup' => 'Complete Signup',
-        'registration_unavailable' => 'Registration is unavailable.',
-    ],
-    'es' => [
-        'preferred_language' => 'Idioma preferido',
-        'english' => 'English',
-        'spanish' => 'Español',
-        'date' => 'Fecha',
-        'location' => 'Ubicación',
-        'select_time' => 'Seleccione una hora',
-        'no_times' => 'Actualmente no hay horarios disponibles.',
-        'seat' => 'cupo',
-        'seats' => 'cupos',
-        'remaining' => 'disponibles',
-        'full' => 'Lleno',
-        'your_information' => 'Su información',
-        'first_name' => 'Nombre',
-        'last_name' => 'Apellido',
-        'email' => 'Correo electrónico',
-        'phone' => 'Teléfono',
-        'sms_label' => 'Envíeme por mensaje de texto la confirmación de registro y recordatorios de LFCHD.',
-        'sms_help' => 'La frecuencia de los mensajes varía. Pueden aplicarse tarifas de mensajes y datos. Responda STOP para dejar de recibir mensajes. El consentimiento para SMS es opcional y no es necesario para registrarse.',
-        'additional_information' => 'Información adicional',
-        'select_option' => 'Seleccione una opción',
-        'complete_signup' => 'Completar registro',
-        'registration_unavailable' => 'El registro no está disponible.',
-    ],
-];
+$eventTitle = trim((string)($language === 'es' ? ($event['title_es'] ?? '') : ''));
+if ($eventTitle === '') {
+    $eventTitle = (string)($event['title'] ?? '');
+}
 
-$t = $translations[$language];
+$eventDescription = trim((string)($language === 'es' ? ($event['description_es'] ?? '') : ''));
+if ($eventDescription === '') {
+    $eventDescription = (string)($event['description'] ?? '');
+}
 
-$eventTitle = $language === 'es' && !empty($event['title_es'])
-    ? $event['title_es']
-    : $event['title'];
-
-$eventDescription = $language === 'es' && !empty($event['description_es'])
-    ? $event['description_es']
-    : ($event['description'] ?? '');
-
-$eventLocation = $language === 'es' && !empty($event['location_es'])
-    ? $event['location_es']
-    : ($event['location'] ?? '');
+$eventLocation = trim((string)($language === 'es' ? ($event['location_es'] ?? '') : ''));
+if ($eventLocation === '') {
+    $eventLocation = (string)($event['location'] ?? '');
+}
 
 function publicEventDate(string $date, string $language): string
 {
-    $value = new DateTimeImmutable($date);
+    $dt = new DateTimeImmutable($date);
 
     if ($language !== 'es') {
-        return $value->format('l, F j, Y');
+        return $dt->format('l, F j, Y');
     }
 
     $days = [
-        'Sunday' => 'domingo',
-        'Monday' => 'lunes',
-        'Tuesday' => 'martes',
-        'Wednesday' => 'miércoles',
-        'Thursday' => 'jueves',
-        'Friday' => 'viernes',
-        'Saturday' => 'sábado',
+        'Sunday' => 'domingo', 'Monday' => 'lunes', 'Tuesday' => 'martes',
+        'Wednesday' => 'miércoles', 'Thursday' => 'jueves',
+        'Friday' => 'viernes', 'Saturday' => 'sábado',
     ];
 
     $months = [
-        'January' => 'enero',
-        'February' => 'febrero',
-        'March' => 'marzo',
-        'April' => 'abril',
-        'May' => 'mayo',
-        'June' => 'junio',
-        'July' => 'julio',
-        'August' => 'agosto',
-        'September' => 'septiembre',
-        'October' => 'octubre',
-        'November' => 'noviembre',
-        'December' => 'diciembre',
+        1 => 'enero', 2 => 'febrero', 3 => 'marzo', 4 => 'abril',
+        5 => 'mayo', 6 => 'junio', 7 => 'julio', 8 => 'agosto',
+        9 => 'septiembre', 10 => 'octubre', 11 => 'noviembre', 12 => 'diciembre',
     ];
 
-    return $days[$value->format('l')]
-        . ', '
-        . $value->format('j')
-        . ' de '
-        . $months[$value->format('F')]
-        . ' de '
-        . $value->format('Y');
+    return sprintf(
+        '%s, %d de %s de %s',
+        $days[$dt->format('l')] ?? $dt->format('l'),
+        (int)$dt->format('j'),
+        $months[(int)$dt->format('n')] ?? $dt->format('F'),
+        $dt->format('Y')
+    );
 }
 
 function questionLabel(array $question, string $language): string
 {
-    if (
-        $language === 'es'
-        && !empty($question['question_text_es'])
-    ) {
-        return $question['question_text_es'];
-    }
-
-    return $question['question_text'];
-}
-
-function questionOptions(array $question, string $language): array
-{
-    $englishOptions = json_decode(
-        $question['options_json'] ?? '[]',
-        true
-    );
-
-    if (!is_array($englishOptions)) {
-        $englishOptions = [];
-    }
-
-    $displayOptions = $englishOptions;
-
-    if (
-        $language === 'es'
-        && !empty($question['options_json_es'])
-    ) {
-        $spanishOptions = json_decode(
-            $question['options_json_es'],
-            true
-        );
-
-        if (
-            is_array($spanishOptions)
-            && count($spanishOptions) === count($englishOptions)
-        ) {
-            $displayOptions = $spanishOptions;
+    if ($language === 'es') {
+        $spanish = trim((string)($question['question_text_es'] ?? ''));
+        if ($spanish !== '') {
+            return $spanish;
         }
     }
 
-    $result = [];
-
-    foreach ($englishOptions as $index => $value) {
-        $result[] = [
-            'value' => (string) $value,
-            'label' => (string) ($displayOptions[$index] ?? $value),
-        ];
-    }
-
-    return $result;
+    return (string)($question['question_text'] ?? '');
 }
 
-?>
+function questionOptions(array $question): array
+{
+    $english = [];
+    $spanish = [];
 
+    if (!empty($question['options_json'])) {
+        $decoded = json_decode((string)$question['options_json'], true);
+        if (is_array($decoded)) {
+            $english = array_values($decoded);
+        }
+    }
+
+    if (!empty($question['options_json_es'])) {
+        $decoded = json_decode((string)$question['options_json_es'], true);
+        if (is_array($decoded)) {
+            $spanish = array_values($decoded);
+        }
+    }
+
+    return [$english, $spanish];
+}
+
+$labels = $language === 'es'
+    ? [
+        'date' => 'Fecha',
+        'location' => 'Lugar',
+        'select_time' => 'Seleccione una hora',
+        'choose_time' => 'Elija una hora disponible',
+        'seats' => 'lugares disponibles',
+        'seat' => 'lugar disponible',
+        'full' => 'Lleno',
+        'registration_info' => 'Su información',
+        'first_name' => 'Nombre',
+        'last_name' => 'Apellido',
+        'email' => 'Correo electrónico',
+        'phone' => 'Teléfono',
+        'sms_opt_in' => 'Sí, deseo recibir mensajes de texto sobre este evento.',
+        'sms_note' => 'Pueden aplicarse tarifas de mensajes y datos. Responda STOP para dejar de recibir mensajes.',
+        'additional_info' => 'Información adicional',
+        'required' => 'Obligatorio',
+        'submit' => 'Registrarme',
+        'not_open' => 'El registro no está disponible en este momento.',
+        'select_one' => 'Seleccione una opción',
+    ]
+    : [
+        'date' => 'Date',
+        'location' => 'Location',
+        'select_time' => 'Select a Time',
+        'choose_time' => 'Choose an available time',
+        'seats' => 'seats available',
+        'seat' => 'seat available',
+        'full' => 'Full',
+        'registration_info' => 'Your Information',
+        'first_name' => 'First Name',
+        'last_name' => 'Last Name',
+        'email' => 'Email',
+        'phone' => 'Phone',
+        'sms_opt_in' => 'Yes, I would like to receive text messages about this event.',
+        'sms_note' => 'Message and data rates may apply. Reply STOP to unsubscribe.',
+        'additional_info' => 'Additional Information',
+        'required' => 'Required',
+        'submit' => 'Register',
+        'not_open' => 'Registration is not available at this time.',
+        'select_one' => 'Select an option',
+    ];
+
+$old = $old ?? [];
+$errors = $errors ?? [];
+$questions = $questions ?? [];
+$slots = $slots ?? [];
+$registrationStatus = $registrationStatus ?? ['open' => true, 'message' => ''];
+?>
 <!doctype html>
-<html lang="<?= $language ?>">
+<html lang="<?= $language === 'es' ? 'es' : 'en' ?>">
 <head>
     <meta charset="utf-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1"
-    >
-
-    <title>
-        <?= htmlspecialchars(
-            $eventTitle,
-            ENT_QUOTES,
-            'UTF-8'
-        ) ?>
-    </title>
-
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    >
-
-    <style>
-        .slot-option input {
-            position: absolute;
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .slot-option label {
-            cursor: pointer;
-            width: 100%;
-        }
-
-        .slot-option input:checked + label {
-            border-color: var(--bs-primary);
-            background-color: var(--bs-primary-bg-subtle);
-        }
-
-        .slot-full label {
-            cursor: not-allowed;
-            opacity: .6;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><?= htmlspecialchars($eventTitle, ENT_QUOTES, 'UTF-8') ?> | LFCHD</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/signup.css" rel="stylesheet">
 </head>
+<body class="bg-body-tertiary">
 
-<body class="bg-light">
+<header class="lfchd-public-header">
+    <div class="container py-3 py-md-4">
+        <div class="d-flex align-items-center gap-3 gap-md-4">
+            <img
+                src="/assets/images/lfchd-logo.png"
+                alt="Lexington-Fayette County Health Department"
+                class="lfchd-public-logo"
+            >
+            <div>
+                <div class="lfchd-public-department-name">
+                    Lexington-Fayette County Health Department
+                </div>
+                <div class="lfchd-public-site-name">
+                    <?= $language === 'es' ? 'Registro de eventos' : 'Event Registration' ?>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
 
-<div class="container py-5">
-
+<main class="container py-4 py-md-5">
     <div class="row justify-content-center">
-        <div class="col-lg-8">
+        <div class="col-12 col-xl-10 col-xxl-9">
 
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-
-                    <div class="d-flex justify-content-end mb-3">
-                        <div>
-                            <label
-                                for="preferred_language_selector"
-                                class="form-label fw-semibold mb-1"
-                            >
-                                Preferred Language / Idioma preferido
-                            </label>
-
-                            <select
-                                id="preferred_language_selector"
-                                class="form-select"
-                                style="min-width: 180px;"
-                            >
-                                <option
-                                    value="en"
-                                    <?= $language === 'en' ? 'selected' : '' ?>
-                                >
-                                    English
-                                </option>
-
-                                <option
-                                    value="es"
-                                    <?= $language === 'es' ? 'selected' : '' ?>
-                                >
-                                    Español
-                                </option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <h1 class="mb-3">
-                        <?= htmlspecialchars(
-                            $eventTitle,
-                            ENT_QUOTES,
-                            'UTF-8'
-                        ) ?>
-                    </h1>
-
-                    <?php if ($eventDescription !== ''): ?>
-
-                        <p>
-                            <?= nl2br(
-                                htmlspecialchars(
-                                    $eventDescription,
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                )
-                            ) ?>
-                        </p>
-
-                    <?php endif; ?>
-
-                    <dl class="row mb-0">
-
-                        <dt class="col-sm-3">
-                            <?= htmlspecialchars($t['date']) ?>
-                        </dt>
-
-                        <dd class="col-sm-9">
-                            <?= htmlspecialchars(
-                                publicEventDate(
-                                    $event['event_date'],
-                                    $language
-                                ),
-                                ENT_QUOTES,
-                                'UTF-8'
-                            ) ?>
-                        </dd>
-
-                        <?php if ($eventLocation !== ''): ?>
-
-                            <dt class="col-sm-3">
-                                <?= htmlspecialchars($t['location']) ?>
-                            </dt>
-
-                            <dd class="col-sm-9">
-                                <?= htmlspecialchars(
-                                    $eventLocation,
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>
-                            </dd>
-
-                        <?php endif; ?>
-
-                    </dl>
-
+            <div class="d-flex justify-content-end mb-3">
+                <div class="lfchd-language-switcher">
+                    <label for="public-language" class="form-label small mb-1">
+                        Preferred Language / Idioma preferido
+                    </label>
+                    <select
+                        id="public-language"
+                        class="form-select"
+                        onchange="window.location.href='?lang=' + encodeURIComponent(this.value);"
+                    >
+                        <option value="en" <?= $language === 'en' ? 'selected' : '' ?>>English</option>
+                        <option value="es" <?= $language === 'es' ? 'selected' : '' ?>>Español</option>
+                    </select>
                 </div>
             </div>
 
-            <?php if (!empty($errors)): ?>
+            <section class="card lfchd-page-card mb-4">
+                <div class="card-body p-4 p-md-5">
+                    <h1 class="lfchd-event-title mb-3">
+                        <?= htmlspecialchars($eventTitle, ENT_QUOTES, 'UTF-8') ?>
+                    </h1>
 
-                <div class="alert alert-danger">
-                    <ul class="mb-0">
-
-                        <?php foreach ($errors as $error): ?>
-
-                            <li>
-                                <?= htmlspecialchars(
-                                    $error,
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>
-                            </li>
-
-                        <?php endforeach; ?>
-
-                    </ul>
-                </div>
-
-            <?php endif; ?>
-
-            <?php if (!$registrationOpen): ?>
-
-                <div class="alert alert-info">
-                    <?= htmlspecialchars(
-                        $registrationMessage
-                        ?? $t['registration_unavailable'],
-                        ENT_QUOTES,
-                        'UTF-8'
-                    ) ?>
-                </div>
-
-            <?php else: ?>
-
-                <form
-                    method="post"
-                    action="/event/<?= rawurlencode(
-                        $event['public_slug']
-                    ) ?>/register"
-                >
-
-                    <?= Csrf::field() ?>
-
-                    <input
-                        type="hidden"
-                        id="preferred_language"
-                        name="preferred_language"
-                        value="<?= $language ?>"
-                    >
-
-                    <div class="card shadow-sm mb-4">
-
-                        <div class="card-header">
-                            <strong>
-                                <?= htmlspecialchars($t['select_time']) ?>
-                            </strong>
+                    <?php if ($eventDescription !== ''): ?>
+                        <div class="lfchd-event-description mb-4">
+                            <?= nl2br(htmlspecialchars($eventDescription, ENT_QUOTES, 'UTF-8')) ?>
                         </div>
-
-                        <div class="card-body">
-
-                            <?php
-                            $availableSlots = array_filter(
-                                $slots,
-                                fn ($slot) =>
-                                    (int) $slot['remaining'] > 0
-                            );
-                            ?>
-
-                            <?php if (!$availableSlots): ?>
-
-                                <div class="alert alert-warning mb-0">
-                                    <?= htmlspecialchars($t['no_times']) ?>
-                                </div>
-
-                            <?php else: ?>
-
-                                <div class="row g-3">
-
-                                    <?php foreach ($slots as $slot): ?>
-
-                                        <?php
-                                        $start = new DateTimeImmutable(
-                                            $slot['start_datetime']
-                                        );
-
-                                        $end = new DateTimeImmutable(
-                                            $slot['end_datetime']
-                                        );
-
-                                        $remaining =
-                                            (int) $slot['remaining'];
-
-                                        $slotId =
-                                            (int) $slot['id'];
-
-                                        $selected =
-                                            isset($old['slot_id'])
-                                            && (int) $old['slot_id']
-                                                === $slotId;
-                                        ?>
-
-                                        <div class="col-md-6">
-
-                                            <div
-                                                class="slot-option
-                                                <?= $remaining < 1
-                                                    ? 'slot-full'
-                                                    : '' ?>"
-                                            >
-
-                                                <input
-                                                    type="radio"
-                                                    id="slot-<?= $slotId ?>"
-                                                    name="slot_id"
-                                                    value="<?= $slotId ?>"
-                                                    <?= $remaining < 1
-                                                        ? 'disabled'
-                                                        : '' ?>
-                                                    <?= $selected
-                                                        ? 'checked'
-                                                        : '' ?>
-                                                >
-
-                                                <label
-                                                    for="slot-<?= $slotId ?>"
-                                                    class="card p-3"
-                                                >
-
-                                                    <strong>
-                                                        <?= $start->format(
-                                                            'g:i A'
-                                                        ) ?>
-                                                        –
-                                                        <?= $end->format(
-                                                            'g:i A'
-                                                        ) ?>
-                                                    </strong>
-
-                                                    <span class="small text-muted">
-
-                                                        <?php if ($remaining > 0): ?>
-
-                                                            <?= $remaining ?>
-                                                            <?= htmlspecialchars(
-                                                                $remaining === 1
-                                                                    ? $t['seat']
-                                                                    : $t['seats']
-                                                            ) ?>
-                                                            <?= htmlspecialchars($t['remaining']) ?>
-
-                                                        <?php else: ?>
-
-                                                            <?= htmlspecialchars($t['full']) ?>
-
-                                                        <?php endif; ?>
-
-                                                    </span>
-
-                                                </label>
-
-                                            </div>
-
-                                        </div>
-
-                                    <?php endforeach; ?>
-
-                                </div>
-
-                            <?php endif; ?>
-
-                        </div>
-                    </div>
-
-                    <?php if ($availableSlots): ?>
-
-                        <div class="card shadow-sm">
-
-                            <div class="card-header">
-                                <strong>
-                                    <?= htmlspecialchars($t['your_information']) ?>
-                                </strong>
-                            </div>
-
-                            <div class="card-body">
-
-                                <div class="row">
-
-                                    <div class="col-md-6 mb-3">
-                                        <label class="form-label">
-                                            <?= htmlspecialchars($t['first_name']) ?>
-                                        </label>
-
-                                        <input
-                                            type="text"
-                                            name="first_name"
-                                            class="form-control"
-                                            required
-                                            value="<?= htmlspecialchars(
-                                                $old['first_name'] ?? '',
-                                                ENT_QUOTES,
-                                                'UTF-8'
-                                            ) ?>"
-                                        >
-                                    </div>
-
-                                    <div class="col-md-6 mb-3">
-                                        <label class="form-label">
-                                            <?= htmlspecialchars($t['last_name']) ?>
-                                        </label>
-
-                                        <input
-                                            type="text"
-                                            name="last_name"
-                                            class="form-control"
-                                            required
-                                            value="<?= htmlspecialchars(
-                                                $old['last_name'] ?? '',
-                                                ENT_QUOTES,
-                                                'UTF-8'
-                                            ) ?>"
-                                        >
-                                    </div>
-
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label">
-                                        <?= htmlspecialchars($t['email']) ?>
-                                    </label>
-
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        class="form-control"
-                                        value="<?= htmlspecialchars(
-                                            $old['email'] ?? '',
-                                            ENT_QUOTES,
-                                            'UTF-8'
-                                        ) ?>"
-                                    >
-                                </div>
-
-                                <div class="mb-3">
-                                    <label
-                                        for="phone"
-                                        class="form-label"
-                                    >
-                                        <?= htmlspecialchars($t['phone']) ?>
-                                    </label>
-
-                                    <input
-                                        type="tel"
-                                        id="phone"
-                                        name="phone"
-                                        class="form-control"
-                                        autocomplete="tel"
-                                        value="<?= htmlspecialchars(
-                                            $old['phone'] ?? '',
-                                            ENT_QUOTES,
-                                            'UTF-8'
-                                        ) ?>"
-                                    >
-                                </div>
-
-                                <div class="mb-4">
-                                    <div class="form-check">
-                                        <input
-                                            type="checkbox"
-                                            id="sms_opt_in"
-                                            name="sms_opt_in"
-                                            value="1"
-                                            class="form-check-input"
-                                            <?= (
-                                                isset($old['sms_opt_in'])
-                                                && (string) $old['sms_opt_in'] === '1'
-                                            ) ? 'checked' : '' ?>
-                                        >
-
-                                        <label
-                                            for="sms_opt_in"
-                                            class="form-check-label"
-                                        >
-                                            <?= htmlspecialchars($t['sms_label']) ?>
-                                        </label>
-                                    </div>
-
-                                    <div class="form-text ms-4">
-                                        <?= htmlspecialchars($t['sms_help']) ?>
-                                    </div>
-                                </div>
-
-                                <?php if (!empty($questions)): ?>
-
-                                    <hr class="my-4">
-
-                                    <h2 class="h5 mb-3">
-                                        <?= htmlspecialchars($t['additional_information']) ?>
-                                    </h2>
-
-                                    <?php foreach ($questions as $question): ?>
-
-                                        <?php
-                                        $questionId = (int) $question['id'];
-
-                                        $oldAnswer =
-                                            $old['answers'][$questionId]
-                                            ?? '';
-
-                                        $oldAnswers = [];
-
-                                        if (is_array($oldAnswer)) {
-                                            $oldAnswers = array_map(
-                                                'strval',
-                                                $oldAnswer
-                                            );
-                                        } else {
-                                            $oldAnswer = (string) $oldAnswer;
-                                        }
-
-                                        $conditionalQuestionId =
-                                            $question['conditional_question_id'] ?? null;
-
-                                        $conditionalOperator =
-                                            $question['conditional_operator'] ?? null;
-
-                                        $conditionalValue =
-                                            $question['conditional_value'] ?? null;
-
-                                        $label = questionLabel(
-                                            $question,
-                                            $language
-                                        );
-
-                                        $options = questionOptions(
-                                            $question,
-                                            $language
-                                        );
-
-                                        $isMultiCheckbox =
-                                            $question['question_type'] === 'checkbox'
-                                            && $options !== [];
-                                        ?>
-
-                                        <div
-                                            class="mb-3 conditional-question"
-                                            data-question-id="<?= $questionId ?>"
-                                            data-question-type="<?= htmlspecialchars(
-                                                $question['question_type'],
-                                                ENT_QUOTES,
-                                                'UTF-8'
-                                            ) ?>"
-                                            data-condition-question-id="<?= htmlspecialchars(
-                                                (string) ($conditionalQuestionId ?? ''),
-                                                ENT_QUOTES,
-                                                'UTF-8'
-                                            ) ?>"
-                                            data-condition-operator="<?= htmlspecialchars(
-                                                (string) ($conditionalOperator ?? ''),
-                                                ENT_QUOTES,
-                                                'UTF-8'
-                                            ) ?>"
-                                            data-condition-value="<?= htmlspecialchars(
-                                                (string) ($conditionalValue ?? ''),
-                                                ENT_QUOTES,
-                                                'UTF-8'
-                                            ) ?>"
-                                        >
-
-                                            <?php if ($question['question_type'] === 'text'): ?>
-
-                                                <label
-                                                    for="question-<?= $questionId ?>"
-                                                    class="form-label"
-                                                >
-                                                    <?= htmlspecialchars(
-                                                        $label,
-                                                        ENT_QUOTES,
-                                                        'UTF-8'
-                                                    ) ?>
-
-                                                    <?php if ((int) $question['required'] === 1): ?>
-                                                        <span class="text-danger">*</span>
-                                                    <?php endif; ?>
-                                                </label>
-
-                                                <input
-                                                    type="text"
-                                                    id="question-<?= $questionId ?>"
-                                                    name="answers[<?= $questionId ?>]"
-                                                    class="form-control"
-                                                    value="<?= htmlspecialchars(
-                                                        $oldAnswer,
-                                                        ENT_QUOTES,
-                                                        'UTF-8'
-                                                    ) ?>"
-                                                    <?= (int) $question['required'] === 1
-                                                        ? 'required'
-                                                        : '' ?>
-                                                >
-
-                                            <?php elseif ($question['question_type'] === 'textarea'): ?>
-
-                                                <label
-                                                    for="question-<?= $questionId ?>"
-                                                    class="form-label"
-                                                >
-                                                    <?= htmlspecialchars(
-                                                        $label,
-                                                        ENT_QUOTES,
-                                                        'UTF-8'
-                                                    ) ?>
-
-                                                    <?php if ((int) $question['required'] === 1): ?>
-                                                        <span class="text-danger">*</span>
-                                                    <?php endif; ?>
-                                                </label>
-
-                                                <textarea
-                                                    id="question-<?= $questionId ?>"
-                                                    name="answers[<?= $questionId ?>]"
-                                                    class="form-control"
-                                                    rows="5"
-                                                    <?= (int) $question['required'] === 1
-                                                        ? 'required'
-                                                        : '' ?>
-                                                ><?= htmlspecialchars(
-                                                    $oldAnswer,
-                                                    ENT_QUOTES,
-                                                    'UTF-8'
-                                                ) ?></textarea>
-
-                                            <?php elseif ($question['question_type'] === 'select'): ?>
-
-                                                <label
-                                                    for="question-<?= $questionId ?>"
-                                                    class="form-label"
-                                                >
-                                                    <?= htmlspecialchars(
-                                                        $label,
-                                                        ENT_QUOTES,
-                                                        'UTF-8'
-                                                    ) ?>
-
-                                                    <?php if ((int) $question['required'] === 1): ?>
-                                                        <span class="text-danger">*</span>
-                                                    <?php endif; ?>
-                                                </label>
-
-                                                <select
-                                                    id="question-<?= $questionId ?>"
-                                                    name="answers[<?= $questionId ?>]"
-                                                    class="form-select"
-                                                    <?= (int) $question['required'] === 1
-                                                        ? 'required'
-                                                        : '' ?>
-                                                >
-
-                                                    <option value="">
-                                                        <?= htmlspecialchars($t['select_option']) ?>
-                                                    </option>
-
-                                                    <?php foreach ($options as $option): ?>
-
-                                                        <option
-                                                            value="<?= htmlspecialchars(
-                                                                $option['value'],
-                                                                ENT_QUOTES,
-                                                                'UTF-8'
-                                                            ) ?>"
-                                                            <?= $oldAnswer === $option['value']
-                                                                ? 'selected'
-                                                                : '' ?>
-                                                        >
-                                                            <?= htmlspecialchars(
-                                                                $option['label'],
-                                                                ENT_QUOTES,
-                                                                'UTF-8'
-                                                            ) ?>
-                                                        </option>
-
-                                                    <?php endforeach; ?>
-
-                                                </select>
-
-                                            <?php elseif (
-                                                $question['question_type'] === 'checkbox'
-                                                && $isMultiCheckbox
-                                            ): ?>
-
-                                                <div class="form-label">
-                                                    <?= htmlspecialchars(
-                                                        $label,
-                                                        ENT_QUOTES,
-                                                        'UTF-8'
-                                                    ) ?>
-
-                                                    <?php if ((int) $question['required'] === 1): ?>
-                                                        <span class="text-danger">*</span>
-                                                    <?php endif; ?>
-                                                </div>
-
-                                                <?php foreach ($options as $index => $option): ?>
-
-                                                    <?php
-                                                    $checkboxId =
-                                                        'question-'
-                                                        . $questionId
-                                                        . '-'
-                                                        . $index;
-                                                    ?>
-
-                                                    <div class="form-check mb-2">
-
-                                                        <input
-                                                            type="checkbox"
-                                                            id="<?= $checkboxId ?>"
-                                                            name="answers[<?= $questionId ?>][]"
-                                                            value="<?= htmlspecialchars(
-                                                                $option['value'],
-                                                                ENT_QUOTES,
-                                                                'UTF-8'
-                                                            ) ?>"
-                                                            class="form-check-input multi-checkbox-answer"
-                                                            <?= in_array(
-                                                                $option['value'],
-                                                                $oldAnswers,
-                                                                true
-                                                            )
-                                                                ? 'checked'
-                                                                : '' ?>
-                                                            <?= (int) $question['required'] === 1
-                                                                ? 'data-checkbox-group-required="1"'
-                                                                : '' ?>
-                                                        >
-
-                                                        <label
-                                                            for="<?= $checkboxId ?>"
-                                                            class="form-check-label"
-                                                        >
-                                                            <?= htmlspecialchars(
-                                                                $option['label'],
-                                                                ENT_QUOTES,
-                                                                'UTF-8'
-                                                            ) ?>
-                                                        </label>
-
-                                                    </div>
-
-                                                <?php endforeach; ?>
-
-                                            <?php elseif ($question['question_type'] === 'checkbox'): ?>
-
-                                                <div class="form-check">
-
-                                                    <input
-                                                        type="checkbox"
-                                                        id="question-<?= $questionId ?>"
-                                                        name="answers[<?= $questionId ?>]"
-                                                        value="1"
-                                                        class="form-check-input"
-                                                        <?= $oldAnswer === '1'
-                                                            ? 'checked'
-                                                            : '' ?>
-                                                        <?= (int) $question['required'] === 1
-                                                            ? 'required'
-                                                            : '' ?>
-                                                    >
-
-                                                    <label
-                                                        for="question-<?= $questionId ?>"
-                                                        class="form-check-label"
-                                                    >
-                                                        <?= htmlspecialchars(
-                                                            $label,
-                                                            ENT_QUOTES,
-                                                            'UTF-8'
-                                                        ) ?>
-
-                                                        <?php if ((int) $question['required'] === 1): ?>
-                                                            <span class="text-danger">*</span>
-                                                        <?php endif; ?>
-                                                    </label>
-
-                                                </div>
-
-                                            <?php endif; ?>
-
-                                        </div>
-
-                                    <?php endforeach; ?>
-
-                                <?php endif; ?>
-
-                            </div>
-
-                            <div class="card-footer text-end">
-
-                                <button
-                                    type="submit"
-                                    class="btn btn-primary btn-lg"
-                                >
-                                    <?= htmlspecialchars($t['complete_signup']) ?>
-                                </button>
-
-                            </div>
-
-                        </div>
-
                     <?php endif; ?>
 
-                </form>
+                    <div class="row g-3 lfchd-event-meta">
+                        <div class="col-12 col-md-6">
+                            <div class="lfchd-meta-label">
+                                <?= htmlspecialchars($labels['date'], ENT_QUOTES, 'UTF-8') ?>
+                            </div>
+                            <div class="lfchd-meta-value">
+                                <?= htmlspecialchars(publicEventDate((string)$event['event_date'], $language), ENT_QUOTES, 'UTF-8') ?>
+                            </div>
+                        </div>
 
+                        <?php if ($eventLocation !== ''): ?>
+                            <div class="col-12 col-md-6">
+                                <div class="lfchd-meta-label">
+                                    <?= htmlspecialchars($labels['location'], ENT_QUOTES, 'UTF-8') ?>
+                                </div>
+                                <div class="lfchd-meta-value">
+                                    <?= htmlspecialchars($eventLocation, ENT_QUOTES, 'UTF-8') ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </section>
+
+            <?php if (!empty($errors)): ?>
+                <div class="alert alert-danger" role="alert">
+                    <ul class="mb-0 ps-3">
+                        <?php foreach ($errors as $error): ?>
+                            <li><?= htmlspecialchars((string)$error, ENT_QUOTES, 'UTF-8') ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
             <?php endif; ?>
 
+            <?php if (empty($registrationStatus['open'])): ?>
+                <div class="alert alert-info lfchd-page-card">
+                    <?= htmlspecialchars((string)($registrationStatus['message'] ?: $labels['not_open']), ENT_QUOTES, 'UTF-8') ?>
+                </div>
+            <?php else: ?>
+                <form
+                    method="post"
+                    action="/event/<?= rawurlencode((string)$event['public_slug']) ?>/register"
+                    class="card lfchd-page-card"
+                    id="registration-form"
+                >
+                    <div class="card-body p-4 p-md-5">
+                        <?= \Boneblaze\SignupLfchdOrg\Services\Csrf::field() ?>
+
+                        <input type="hidden" name="preferred_language" value="<?= htmlspecialchars($language, ENT_QUOTES, 'UTF-8') ?>">
+
+                        <section class="mb-5">
+                            <h2 class="lfchd-section-heading">
+                                <?= htmlspecialchars($labels['select_time'], ENT_QUOTES, 'UTF-8') ?>
+                            </h2>
+                            <p class="text-secondary mb-3">
+                                <?= htmlspecialchars($labels['choose_time'], ENT_QUOTES, 'UTF-8') ?>
+                            </p>
+
+                            <div class="row g-3">
+                                <?php foreach ($slots as $slot): ?>
+                                    <?php
+                                    $available = (int)($slot['available'] ?? 0);
+                                    $slotDisabled = empty($slot['enabled']) || $available <= 0;
+                                    $slotId = (string)$slot['id'];
+                                    $selectedSlot = (string)($old['slot_id'] ?? '');
+                                    ?>
+                                    <div class="col-12 col-sm-6 col-lg-4">
+                                        <label class="lfchd-slot-card <?= $slotDisabled ? 'is-disabled' : '' ?>">
+                                            <input
+                                                type="radio"
+                                                name="slot_id"
+                                                value="<?= htmlspecialchars($slotId, ENT_QUOTES, 'UTF-8') ?>"
+                                                <?= $selectedSlot === $slotId ? 'checked' : '' ?>
+                                                <?= $slotDisabled ? 'disabled' : '' ?>
+                                                required
+                                            >
+                                            <span class="lfchd-slot-time">
+                                                <?= htmlspecialchars((new DateTimeImmutable((string)$slot['start_datetime']))->format('g:i A'), ENT_QUOTES, 'UTF-8') ?>
+                                            </span>
+                                            <span class="lfchd-slot-availability">
+                                                <?php if ($slotDisabled): ?>
+                                                    <?= htmlspecialchars($labels['full'], ENT_QUOTES, 'UTF-8') ?>
+                                                <?php else: ?>
+                                                    <?= $available ?> <?= htmlspecialchars($available === 1 ? $labels['seat'] : $labels['seats'], ENT_QUOTES, 'UTF-8') ?>
+                                                <?php endif; ?>
+                                            </span>
+                                        </label>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </section>
+
+                        <section class="mb-5">
+                            <h2 class="lfchd-section-heading">
+                                <?= htmlspecialchars($labels['registration_info'], ENT_QUOTES, 'UTF-8') ?>
+                            </h2>
+
+                            <div class="row g-3">
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label" for="first_name">
+                                        <?= htmlspecialchars($labels['first_name'], ENT_QUOTES, 'UTF-8') ?>
+                                    </label>
+                                    <input
+                                        class="form-control"
+                                        id="first_name"
+                                        name="first_name"
+                                        type="text"
+                                        autocomplete="given-name"
+                                        value="<?= htmlspecialchars((string)($old['first_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                        required
+                                    >
+                                </div>
+
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label" for="last_name">
+                                        <?= htmlspecialchars($labels['last_name'], ENT_QUOTES, 'UTF-8') ?>
+                                    </label>
+                                    <input
+                                        class="form-control"
+                                        id="last_name"
+                                        name="last_name"
+                                        type="text"
+                                        autocomplete="family-name"
+                                        value="<?= htmlspecialchars((string)($old['last_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                        required
+                                    >
+                                </div>
+
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label" for="email">
+                                        <?= htmlspecialchars($labels['email'], ENT_QUOTES, 'UTF-8') ?>
+                                    </label>
+                                    <input
+                                        class="form-control"
+                                        id="email"
+                                        name="email"
+                                        type="email"
+                                        autocomplete="email"
+                                        inputmode="email"
+                                        value="<?= htmlspecialchars((string)($old['email'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                    >
+                                </div>
+
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label" for="phone">
+                                        <?= htmlspecialchars($labels['phone'], ENT_QUOTES, 'UTF-8') ?>
+                                    </label>
+                                    <input
+                                        class="form-control"
+                                        id="phone"
+                                        name="phone"
+                                        type="tel"
+                                        autocomplete="tel"
+                                        inputmode="tel"
+                                        value="<?= htmlspecialchars((string)($old['phone'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                    >
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="form-check lfchd-sms-consent">
+                                        <input
+                                            class="form-check-input"
+                                            id="sms_opt_in"
+                                            name="sms_opt_in"
+                                            type="checkbox"
+                                            value="1"
+                                            <?= !empty($old['sms_opt_in']) ? 'checked' : '' ?>
+                                        >
+                                        <label class="form-check-label" for="sms_opt_in">
+                                            <?= htmlspecialchars($labels['sms_opt_in'], ENT_QUOTES, 'UTF-8') ?>
+                                        </label>
+                                        <div class="form-text">
+                                            <?= htmlspecialchars($labels['sms_note'], ENT_QUOTES, 'UTF-8') ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <?php if (!empty($questions)): ?>
+                            <section class="mb-5">
+                                <h2 class="lfchd-section-heading">
+                                    <?= htmlspecialchars($labels['additional_info'], ENT_QUOTES, 'UTF-8') ?>
+                                </h2>
+
+                                <div class="row g-4">
+                                    <?php foreach ($questions as $question): ?>
+                                        <?php
+                                        $questionId = (int)$question['id'];
+                                        $type = (string)$question['question_type'];
+                                        $required = !empty($question['required']);
+                                        [$englishOptions, $spanishOptions] = questionOptions($question);
+                                        $hasOptions = count($englishOptions) > 0;
+                                        $answer = $old['answers'][$questionId] ?? '';
+                                        ?>
+                                        <div
+                                            class="col-12 question-wrapper"
+                                            data-question-id="<?= $questionId ?>"
+                                            <?php if (!empty($question['conditional_question_id'])): ?>
+                                                data-condition-question-id="<?= (int)$question['conditional_question_id'] ?>"
+                                                data-condition-operator="<?= htmlspecialchars((string)$question['conditional_operator'], ENT_QUOTES, 'UTF-8') ?>"
+                                                data-condition-value="<?= htmlspecialchars((string)$question['conditional_value'], ENT_QUOTES, 'UTF-8') ?>"
+                                            <?php endif; ?>
+                                        >
+                                            <label class="form-label">
+                                                <?= htmlspecialchars(questionLabel($question, $language), ENT_QUOTES, 'UTF-8') ?>
+                                                <?php if ($required): ?>
+                                                    <span class="text-danger">*</span>
+                                                <?php endif; ?>
+                                            </label>
+
+                                            <?php if ($type === 'textarea'): ?>
+                                                <textarea
+                                                    class="form-control"
+                                                    name="answers[<?= $questionId ?>]"
+                                                    rows="5"
+                                                    <?= $required ? 'data-required="1"' : '' ?>
+                                                ><?= htmlspecialchars((string)$answer, ENT_QUOTES, 'UTF-8') ?></textarea>
+
+                                            <?php elseif ($type === 'select'): ?>
+                                                <select
+                                                    class="form-select"
+                                                    name="answers[<?= $questionId ?>]"
+                                                    <?= $required ? 'data-required="1"' : '' ?>
+                                                >
+                                                    <option value="">
+                                                        <?= htmlspecialchars($labels['select_one'], ENT_QUOTES, 'UTF-8') ?>
+                                                    </option>
+
+                                                    <?php foreach ($englishOptions as $index => $option): ?>
+                                                        <?php
+                                                        $displayOption = $language === 'es'
+                                                            ? ($spanishOptions[$index] ?? $option)
+                                                            : $option;
+                                                        ?>
+                                                        <option
+                                                            value="<?= htmlspecialchars((string)$option, ENT_QUOTES, 'UTF-8') ?>"
+                                                            <?= (string)$answer === (string)$option ? 'selected' : '' ?>
+                                                        >
+                                                            <?= htmlspecialchars((string)$displayOption, ENT_QUOTES, 'UTF-8') ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+
+                                            <?php elseif ($type === 'checkbox' && $hasOptions): ?>
+                                                <?php
+                                                $selectedAnswers = [];
+                                                if (is_array($answer)) {
+                                                    $selectedAnswers = $answer;
+                                                } elseif (is_string($answer) && $answer !== '') {
+                                                    $decoded = json_decode($answer, true);
+                                                    $selectedAnswers = is_array($decoded) ? $decoded : [];
+                                                }
+                                                ?>
+                                                <div class="lfchd-checkbox-group">
+                                                    <?php foreach ($englishOptions as $index => $option): ?>
+                                                        <?php
+                                                        $displayOption = $language === 'es'
+                                                            ? ($spanishOptions[$index] ?? $option)
+                                                            : $option;
+                                                        $optionId = 'question_' . $questionId . '_option_' . $index;
+                                                        ?>
+                                                        <div class="form-check mb-2">
+                                                            <input
+                                                                class="form-check-input"
+                                                                type="checkbox"
+                                                                id="<?= htmlspecialchars($optionId, ENT_QUOTES, 'UTF-8') ?>"
+                                                                name="answers[<?= $questionId ?>][]"
+                                                                value="<?= htmlspecialchars((string)$option, ENT_QUOTES, 'UTF-8') ?>"
+                                                                <?= in_array((string)$option, array_map('strval', $selectedAnswers), true) ? 'checked' : '' ?>
+                                                                <?= $required ? 'data-required-group="1"' : '' ?>
+                                                            >
+                                                            <label class="form-check-label" for="<?= htmlspecialchars($optionId, ENT_QUOTES, 'UTF-8') ?>">
+                                                                <?= htmlspecialchars((string)$displayOption, ENT_QUOTES, 'UTF-8') ?>
+                                                            </label>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                </div>
+
+                                            <?php elseif ($type === 'checkbox'): ?>
+                                                <div class="form-check">
+                                                    <input
+                                                        class="form-check-input"
+                                                        type="checkbox"
+                                                        id="question_<?= $questionId ?>"
+                                                        name="answers[<?= $questionId ?>]"
+                                                        value="1"
+                                                        <?= !empty($answer) ? 'checked' : '' ?>
+                                                        <?= $required ? 'data-required="1"' : '' ?>
+                                                    >
+                                                    <label class="form-check-label" for="question_<?= $questionId ?>">
+                                                        <?= htmlspecialchars(questionLabel($question, $language), ENT_QUOTES, 'UTF-8') ?>
+                                                    </label>
+                                                </div>
+
+                                            <?php else: ?>
+                                                <input
+                                                    class="form-control"
+                                                    type="text"
+                                                    name="answers[<?= $questionId ?>]"
+                                                    value="<?= htmlspecialchars((string)$answer, ENT_QUOTES, 'UTF-8') ?>"
+                                                    <?= $required ? 'data-required="1"' : '' ?>
+                                                >
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </section>
+                        <?php endif; ?>
+
+                        <div class="d-grid d-sm-flex justify-content-sm-end">
+                            <button type="submit" class="btn btn-primary btn-lg lfchd-submit-button">
+                                <?= htmlspecialchars($labels['submit'], ENT_QUOTES, 'UTF-8') ?>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            <?php endif; ?>
         </div>
     </div>
+</main>
 
-</div>
+<footer class="lfchd-footer">
+    <div class="container py-4">
+        <div class="text-center small">
+            Lexington-Fayette County Health Department
+        </div>
+    </div>
+</footer>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const questionContainers =
-        document.querySelectorAll('.conditional-question');
+(function () {
+    const form = document.getElementById('registration-form');
+    if (!form) return;
 
-    const smsOptIn =
-        document.getElementById('sms_opt_in');
+    const wrappers = Array.from(form.querySelectorAll('.question-wrapper'));
 
-    const phone =
-        document.getElementById('phone');
+    function valuesForQuestion(questionId) {
+        const wrapper = form.querySelector('.question-wrapper[data-question-id="' + questionId + '"]');
+        if (!wrapper || wrapper.hidden) return [];
 
-    const languageSelector =
-        document.getElementById('preferred_language_selector');
+        const controls = Array.from(wrapper.querySelectorAll('input, select, textarea'));
+        const checkboxes = controls.filter(control => control.type === 'checkbox');
 
-    const languageInput =
-        document.getElementById('preferred_language');
-
-    function updateSmsPhoneRequirement() {
-        if (!smsOptIn || !phone) {
-            return;
+        if (checkboxes.length) {
+            return checkboxes.filter(control => control.checked).map(control => control.value);
         }
 
-        phone.required = smsOptIn.checked;
+        const control = controls[0];
+        return control && control.value !== '' ? [control.value] : [];
     }
 
-    function getQuestionValue(questionId) {
-        const fields = document.querySelectorAll(
-            '[name="answers[' + questionId + ']"], '
-            + '[name="answers[' + questionId + '][]"]'
-        );
-
-        if (!fields.length) {
-            return '';
-        }
-
-        if (
-            fields.length > 1
-            || fields[0].name.endsWith('[]')
-        ) {
-            const checkedValues = Array.from(fields)
-                .filter(function (field) {
-                    return field.type === 'checkbox'
-                        && field.checked;
-                })
-                .map(function (field) {
-                    return field.value;
-                });
-
-            return checkedValues;
-        }
-
-        const field = fields[0];
-
-        if (field.type === 'checkbox') {
-            return field.checked ? '1' : '0';
-        }
-
-        return field.value;
+    function clearWrapper(wrapper) {
+        wrapper.querySelectorAll('input, select, textarea').forEach(control => {
+            if (control.type === 'checkbox' || control.type === 'radio') {
+                control.checked = false;
+            } else {
+                control.value = '';
+            }
+        });
     }
 
-    function conditionMatches(
-        actualValue,
-        operator,
-        expectedValue
-    ) {
-        if (Array.isArray(actualValue)) {
-            const contains =
-                actualValue.includes(expectedValue);
+    function applyRequiredState(wrapper, visible) {
+        wrapper.querySelectorAll('[data-required="1"]').forEach(control => {
+            control.required = visible;
+        });
 
-            return operator === 'not_equals'
-                ? !contains
-                : contains;
+        const requiredGroup = Array.from(wrapper.querySelectorAll('[data-required-group="1"]'));
+        requiredGroup.forEach(control => control.required = false);
+
+        if (visible && requiredGroup.length && !requiredGroup.some(control => control.checked)) {
+            requiredGroup[0].required = true;
         }
-
-        if (operator === 'equals') {
-            return actualValue === expectedValue;
-        }
-
-        if (operator === 'not_equals') {
-            return actualValue !== expectedValue;
-        }
-
-        return true;
     }
 
     function updateConditionalQuestions() {
-        questionContainers.forEach(function (container) {
-            const controllingQuestionId =
-                container.dataset.conditionQuestionId;
+        wrappers.forEach(wrapper => {
+            const controllingId = wrapper.dataset.conditionQuestionId;
 
-            const operator =
-                container.dataset.conditionOperator;
-
-            const expectedValue =
-                container.dataset.conditionValue;
-
-            if (!controllingQuestionId) {
-                container.style.display = '';
-                setRequiredState(container, true);
+            if (!controllingId) {
+                wrapper.hidden = false;
+                applyRequiredState(wrapper, true);
                 return;
             }
 
-            const actualValue =
-                getQuestionValue(controllingQuestionId);
+            const actualValues = valuesForQuestion(controllingId);
+            const expected = wrapper.dataset.conditionValue || '';
+            const operator = wrapper.dataset.conditionOperator || 'equals';
 
-            const shouldShow =
-                conditionMatches(
-                    actualValue,
-                    operator,
-                    expectedValue
-                );
-
-            if (shouldShow) {
-                container.style.display = '';
-                setRequiredState(container, true);
-            } else {
-                container.style.display = 'none';
-                clearQuestionValue(container);
-                setRequiredState(container, false);
-            }
-        });
-
-        updateMultiCheckboxRequirements();
-    }
-
-    function clearQuestionValue(container) {
-        const fields =
-            container.querySelectorAll(
-                'input, select, textarea'
-            );
-
-        fields.forEach(function (field) {
-            if (field.type === 'checkbox') {
-                field.checked = false;
-            } else {
-                field.value = '';
-            }
-        });
-    }
-
-    function setRequiredState(container, enabled) {
-        const requiredFields =
-            container.querySelectorAll(
-                '[data-conditionally-required="1"]'
-            );
-
-        requiredFields.forEach(function (field) {
-            field.required = enabled;
-        });
-
-        container.dataset.conditionActive =
-            enabled ? '1' : '0';
-    }
-
-    function updateMultiCheckboxRequirements() {
-        questionContainers.forEach(function (container) {
-            const requiredCheckboxes =
-                container.querySelectorAll(
-                    '[data-checkbox-group-required="1"]'
-                );
-
-            if (!requiredCheckboxes.length) {
-                return;
+            let visible = actualValues.includes(expected);
+            if (operator === 'not_equals') {
+                visible = !visible;
             }
 
-            const active =
-                container.dataset.conditionActive !== '0';
-
-            const anyChecked =
-                Array.from(requiredCheckboxes)
-                    .some(function (field) {
-                        return field.checked;
-                    });
-
-            requiredCheckboxes.forEach(function (field, index) {
-                field.required =
-                    active
-                    && !anyChecked
-                    && index === 0;
-            });
-        });
-    }
-
-    questionContainers.forEach(function (container) {
-        const fields =
-            container.querySelectorAll(
-                'input[required], select[required], textarea[required]'
-            );
-
-        fields.forEach(function (field) {
-            field.dataset.conditionallyRequired = '1';
-        });
-    });
-
-    document.addEventListener('change', function (event) {
-        if (
-            event.target.name
-            && event.target.name.startsWith('answers[')
-        ) {
-            updateConditionalQuestions();
-        }
-
-        if (event.target.id === 'sms_opt_in') {
-            updateSmsPhoneRequirement();
-        }
-    });
-
-    if (languageSelector) {
-        languageSelector.addEventListener(
-            'change',
-            function () {
-                if (languageInput) {
-                    languageInput.value =
-                        languageSelector.value;
-                }
-
-                const url = new URL(window.location.href);
-                url.searchParams.set(
-                    'lang',
-                    languageSelector.value
-                );
-
-                window.location.href = url.toString();
+            if (!visible && !wrapper.hidden) {
+                clearWrapper(wrapper);
             }
-        );
+
+            wrapper.hidden = !visible;
+            applyRequiredState(wrapper, visible);
+        });
     }
 
+    form.addEventListener('change', updateConditionalQuestions);
+    form.addEventListener('input', updateConditionalQuestions);
     updateConditionalQuestions();
-    updateSmsPhoneRequirement();
-});
+})();
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

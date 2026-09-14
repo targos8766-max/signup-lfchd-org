@@ -7,10 +7,10 @@ $pageTitle = 'Edit Registration | LFCHD Signup';
 require dirname(__DIR__) . '/partials/header.php';
 ?>
 
-<div class="container py-5">
+<div class="container py-4 py-md-5">
 
     <div class="row justify-content-center">
-        <div class="col-lg-9">
+        <div class="col-12 col-lg-10 col-xl-9">
 
             <h1 class="mb-1">
                 Edit Registration
@@ -27,7 +27,8 @@ require dirname(__DIR__) . '/partials/header.php';
             <?php if (!empty($errors)): ?>
 
                 <div class="alert alert-danger">
-                    <ul class="mb-0">
+                    <strong>Please correct the following:</strong>
+                    <ul class="mb-0 mt-2">
 
                         <?php foreach ($errors as $error): ?>
 
@@ -58,7 +59,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
             <div class="card shadow-sm mb-4">
 
-                <div class="card-body">
+                <div class="card-body p-3 p-md-4">
 
                     <div class="text-muted small">
                         Registration Time
@@ -86,22 +87,26 @@ require dirname(__DIR__) . '/partials/header.php';
 
                 <?= Csrf::field() ?>
 
-                <div class="card-body">
+                <div class="card-body p-3 p-md-4">
 
                     <h2 class="h5 mb-3">
                         Registration Information
                     </h2>
 
-                    <div class="row">
+                    <div class="row g-3">
 
-                        <div class="col-md-6 mb-3">
+                        <div class="col-12 col-md-6">
 
-                            <label class="form-label">
+                            <label
+                                for="first_name"
+                                class="form-label"
+                            >
                                 First Name
                             </label>
 
                             <input
                                 type="text"
+                                id="first_name"
                                 name="first_name"
                                 class="form-control"
                                 required
@@ -114,14 +119,18 @@ require dirname(__DIR__) . '/partials/header.php';
 
                         </div>
 
-                        <div class="col-md-6 mb-3">
+                        <div class="col-12 col-md-6">
 
-                            <label class="form-label">
+                            <label
+                                for="last_name"
+                                class="form-label"
+                            >
                                 Last Name
                             </label>
 
                             <input
                                 type="text"
+                                id="last_name"
                                 name="last_name"
                                 class="form-control"
                                 required
@@ -134,43 +143,51 @@ require dirname(__DIR__) . '/partials/header.php';
 
                         </div>
 
-                    </div>
+                        <div class="col-12">
 
-                    <div class="mb-3">
+                            <label
+                                for="email"
+                                class="form-label"
+                            >
+                                Email
+                            </label>
 
-                        <label class="form-label">
-                            Email
-                        </label>
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                class="form-control"
+                                value="<?= htmlspecialchars(
+                                    $registration['email'] ?? '',
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>"
+                            >
 
-                        <input
-                            type="email"
-                            name="email"
-                            class="form-control"
-                            value="<?= htmlspecialchars(
-                                $registration['email'] ?? '',
-                                ENT_QUOTES,
-                                'UTF-8'
-                            ) ?>"
-                        >
+                        </div>
 
-                    </div>
+                        <div class="col-12">
 
-                    <div class="mb-3">
+                            <label
+                                for="phone"
+                                class="form-label"
+                            >
+                                Phone
+                            </label>
 
-                        <label class="form-label">
-                            Phone
-                        </label>
+                            <input
+                                type="tel"
+                                id="phone"
+                                name="phone"
+                                class="form-control"
+                                value="<?= htmlspecialchars(
+                                    $registration['phone'] ?? '',
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>"
+                            >
 
-                        <input
-                            type="tel"
-                            name="phone"
-                            class="form-control"
-                            value="<?= htmlspecialchars(
-                                $registration['phone'] ?? '',
-                                ENT_QUOTES,
-                                'UTF-8'
-                            ) ?>"
-                        >
+                        </div>
 
                     </div>
 
@@ -185,18 +202,11 @@ require dirname(__DIR__) . '/partials/header.php';
                         <?php foreach ($questions as $question): ?>
 
                             <?php
-                            $questionId =
-                                (int) $question['id'];
+                            $questionId = (int) $question['id'];
 
-                            $answer =
+                            $storedAnswer =
                                 $answers[$questionId]
                                 ?? '';
-
-                            if (is_array($answer)) {
-                                $answer = '';
-                            }
-
-                            $answer = (string) $answer;
 
                             $conditionalQuestionId =
                                 $question['conditional_question_id']
@@ -209,6 +219,53 @@ require dirname(__DIR__) . '/partials/header.php';
                             $conditionalValue =
                                 $question['conditional_value']
                                 ?? null;
+
+                            $options = [];
+                            if (!empty($question['options_json'])) {
+                                $decodedOptions = json_decode(
+                                    $question['options_json'],
+                                    true
+                                );
+
+                                if (is_array($decodedOptions)) {
+                                    $options = $decodedOptions;
+                                }
+                            }
+
+                            $isMultiCheckbox =
+                                $question['question_type'] === 'checkbox'
+                                && !empty($options);
+
+                            $selectedCheckboxValues = [];
+
+                            if ($isMultiCheckbox) {
+                                if (is_array($storedAnswer)) {
+                                    $selectedCheckboxValues = array_map(
+                                        'strval',
+                                        $storedAnswer
+                                    );
+                                } else {
+                                    $decodedStored = json_decode(
+                                        (string) $storedAnswer,
+                                        true
+                                    );
+
+                                    if (is_array($decodedStored)) {
+                                        $selectedCheckboxValues = array_map(
+                                            'strval',
+                                            $decodedStored
+                                        );
+                                    }
+                                }
+
+                                $answer = '';
+                            } else {
+                                if (is_array($storedAnswer)) {
+                                    $answer = '';
+                                } else {
+                                    $answer = (string) $storedAnswer;
+                                }
+                            }
                             ?>
 
                             <div
@@ -285,18 +342,6 @@ require dirname(__DIR__) . '/partials/header.php';
 
                                 <?php elseif ($question['question_type'] === 'select'): ?>
 
-                                    <?php
-                                    $options = json_decode(
-                                        $question['options_json']
-                                            ?? '[]',
-                                        true
-                                    );
-
-                                    if (!is_array($options)) {
-                                        $options = [];
-                                    }
-                                    ?>
-
                                     <select
                                         name="answers[<?= $questionId ?>]"
                                         class="form-select"
@@ -333,30 +378,94 @@ require dirname(__DIR__) . '/partials/header.php';
 
                                 <?php elseif ($question['question_type'] === 'checkbox'): ?>
 
-                                    <div class="form-check">
+                                    <?php if ($isMultiCheckbox): ?>
 
-                                        <input
-                                            type="checkbox"
-                                            name="answers[<?= $questionId ?>]"
-                                            value="1"
-                                            class="form-check-input"
-                                            id="answer-<?= $questionId ?>"
-                                            <?= $answer === '1'
-                                                ? 'checked'
-                                                : '' ?>
+                                        <div
+                                            class="checkbox-group"
+                                            data-checkbox-group="<?= $questionId ?>"
                                             <?= (int) $question['required'] === 1
-                                                ? 'required data-conditionally-required="1"'
+                                                ? 'data-conditionally-required-group="1"'
                                                 : '' ?>
                                         >
+                                            <?php foreach ($options as $index => $option): ?>
+                                                <?php
+                                                $optionId =
+                                                    'answer-'
+                                                    . $questionId
+                                                    . '-'
+                                                    . $index;
+                                                ?>
 
-                                        <label
-                                            class="form-check-label"
-                                            for="answer-<?= $questionId ?>"
-                                        >
-                                            Yes
-                                        </label>
+                                                <div class="form-check mb-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        name="answers[<?= $questionId ?>][]"
+                                                        value="<?= htmlspecialchars(
+                                                            (string) $option,
+                                                            ENT_QUOTES,
+                                                            'UTF-8'
+                                                        ) ?>"
+                                                        class="form-check-input"
+                                                        id="<?= htmlspecialchars(
+                                                            $optionId,
+                                                            ENT_QUOTES,
+                                                            'UTF-8'
+                                                        ) ?>"
+                                                        <?= in_array(
+                                                            (string) $option,
+                                                            $selectedCheckboxValues,
+                                                            true
+                                                        )
+                                                            ? 'checked'
+                                                            : '' ?>
+                                                    >
 
-                                    </div>
+                                                    <label
+                                                        class="form-check-label"
+                                                        for="<?= htmlspecialchars(
+                                                            $optionId,
+                                                            ENT_QUOTES,
+                                                            'UTF-8'
+                                                        ) ?>"
+                                                    >
+                                                        <?= htmlspecialchars(
+                                                            (string) $option,
+                                                            ENT_QUOTES,
+                                                            'UTF-8'
+                                                        ) ?>
+                                                    </label>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+
+                                    <?php else: ?>
+
+                                        <div class="form-check">
+
+                                            <input
+                                                type="checkbox"
+                                                name="answers[<?= $questionId ?>]"
+                                                value="1"
+                                                class="form-check-input"
+                                                id="answer-<?= $questionId ?>"
+                                                <?= $answer === '1'
+                                                    ? 'checked'
+                                                    : '' ?>
+                                                <?= (int) $question['required'] === 1
+                                                    ? 'required data-conditionally-required="1"'
+                                                    : '' ?>
+                                            >
+
+                                            <label
+                                                class="form-check-label"
+                                                for="answer-<?= $questionId ?>"
+                                            >
+                                                Yes
+                                            </label>
+
+                                        </div>
+
+                                    <?php endif; ?>
 
                                 <?php endif; ?>
 
@@ -368,23 +477,25 @@ require dirname(__DIR__) . '/partials/header.php';
 
                 </div>
 
-                <div
-                    class="card-footer d-flex justify-content-between"
-                >
+                <div class="card-footer bg-white p-3 p-md-4">
 
-                    <a
-                        href="/admin/events/<?= (int) $registration['event_id'] ?>/registrations"
-                        class="btn btn-outline-secondary"
-                    >
-                        Cancel
-                    </a>
+                    <div class="lfchd-mobile-actions justify-content-between">
 
-                    <button
-                        type="submit"
-                        class="btn btn-primary"
-                    >
-                        Save Changes
-                    </button>
+                        <a
+                            href="/admin/events/<?= (int) $registration['event_id'] ?>/registrations"
+                            class="btn btn-outline-secondary"
+                        >
+                            Cancel
+                        </a>
+
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                        >
+                            Save Changes
+                        </button>
+
+                    </div>
 
                 </div>
 
@@ -400,13 +511,27 @@ document.addEventListener('DOMContentLoaded', function () {
     const questionContainers =
         document.querySelectorAll('.conditional-question');
 
-    function getQuestionValue(questionId) {
+    function getQuestionValues(questionId) {
+        const multiCheckboxes = document.querySelectorAll(
+            '[name="answers[' + questionId + '][]"][type="checkbox"]'
+        );
+
+        if (multiCheckboxes.length) {
+            return Array.from(multiCheckboxes)
+                .filter(function (checkbox) {
+                    return checkbox.checked;
+                })
+                .map(function (checkbox) {
+                    return checkbox.value;
+                });
+        }
+
         const checkbox = document.querySelector(
             '[name="answers[' + questionId + ']"][type="checkbox"]'
         );
 
         if (checkbox) {
-            return checkbox.checked ? '1' : '0';
+            return [checkbox.checked ? '1' : '0'];
         }
 
         const field = document.querySelector(
@@ -414,10 +539,10 @@ document.addEventListener('DOMContentLoaded', function () {
         );
 
         if (!field) {
-            return '';
+            return [''];
         }
 
-        return field.value;
+        return [field.value];
     }
 
     function clearQuestionValue(container) {
@@ -447,6 +572,35 @@ document.addEventListener('DOMContentLoaded', function () {
         requiredFields.forEach(function (field) {
             field.required = enabled;
         });
+
+        const requiredGroups =
+            container.querySelectorAll(
+                '[data-conditionally-required-group="1"]'
+            );
+
+        requiredGroups.forEach(function (group) {
+            const checkboxes =
+                group.querySelectorAll(
+                    'input[type="checkbox"]'
+                );
+
+            checkboxes.forEach(function (checkbox) {
+                checkbox.required = false;
+            });
+
+            if (!enabled || !checkboxes.length) {
+                return;
+            }
+
+            const anyChecked =
+                Array.from(checkboxes).some(function (checkbox) {
+                    return checkbox.checked;
+                });
+
+            if (!anyChecked) {
+                checkboxes[0].required = true;
+            }
+        });
     }
 
     function updateConditionalQuestions() {
@@ -466,8 +620,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            const actualValue =
-                getQuestionValue(
+            const actualValues =
+                getQuestionValues(
                     controllingQuestionId
                 );
 
@@ -475,12 +629,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (operator === 'equals') {
                 shouldShow =
-                    actualValue === expectedValue;
+                    actualValues.includes(expectedValue);
             } else if (
                 operator === 'not_equals'
             ) {
                 shouldShow =
-                    actualValue !== expectedValue;
+                    !actualValues.includes(expectedValue);
             }
 
             if (shouldShow) {

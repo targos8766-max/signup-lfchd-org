@@ -10,9 +10,9 @@ $pageTitle = 'Manage Slots | LFCHD Signup';
 require dirname(__DIR__) . '/partials/header.php';
 ?>
 
-<div class="container py-5">
+<div class="container py-4 py-md-5">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
 
         <div>
             <h1 class="mb-1">
@@ -24,18 +24,20 @@ require dirname(__DIR__) . '/partials/header.php';
             </div>
         </div>
 
-        <a
-            href="/admin/events/create"
-            class="btn btn-outline-secondary"
-        >
-            Create Another Event
-        </a>
+        <div class="lfchd-mobile-actions">
+            <a
+                href="/admin/events/create"
+                class="btn btn-outline-secondary"
+            >
+                Create Another Event
+            </a>
+        </div>
 
     </div>
 
     <?php if (isset($_GET['saved'])): ?>
 
-        <div class="alert alert-success">
+        <div class="alert alert-success" role="alert">
             Time slots saved successfully.
         </div>
 
@@ -50,91 +52,132 @@ require dirname(__DIR__) . '/partials/header.php';
 
             <?= Csrf::field() ?>
 
-            <div class="table-responsive">
+            <?php if (empty($slots)): ?>
 
-                <table class="table table-striped align-middle mb-0">
+                <div class="card-body p-3 p-md-4">
+                    <div class="alert alert-info mb-0">
+                        No time slots are currently available for this event.
+                    </div>
+                </div>
 
-                    <thead>
-                        <tr>
-                            <th>Time</th>
-                            <th style="width:180px;">
-                                Seats
-                            </th>
-                            <th style="width:130px;">
-                                Enabled
-                            </th>
-                        </tr>
-                    </thead>
+            <?php else: ?>
 
-                    <tbody>
+                <div class="table-responsive">
 
-                    <?php foreach ($slots as $slot): ?>
+                    <table class="table table-striped align-middle mb-0">
 
-                        <tr>
+                        <thead>
+                            <tr>
+                                <th scope="col">Time</th>
+                                <th scope="col" style="width:180px;">
+                                    Seats
+                                </th>
+                                <th scope="col" style="width:130px;">
+                                    Enabled
+                                </th>
+                            </tr>
+                        </thead>
 
-                            <td>
-                                <?php
-                                $start = new DateTimeImmutable(
-                                    $slot['start_datetime']
-                                );
+                        <tbody>
 
-                                $end = new DateTimeImmutable(
-                                    $slot['end_datetime']
-                                );
-                                ?>
+                        <?php foreach ($slots as $slot): ?>
 
-                                <?= $start->format('g:i A') ?>
-                                –
-                                <?= $end->format('g:i A') ?>
-                            </td>
+                            <?php
+                            $start = new DateTimeImmutable(
+                                $slot['start_datetime']
+                            );
 
-                            <td>
-                                <input
-                                    type="number"
-                                    name="capacity[<?= (int) $slot['id'] ?>]"
-                                    value="<?= (int) $slot['capacity'] ?>"
-                                    min="1"
-                                    max="999"
-                                    class="form-control"
-                                >
-                            </td>
+                            $end = new DateTimeImmutable(
+                                $slot['end_datetime']
+                            );
 
-                            <td>
+                            $slotId = (int) $slot['id'];
+                            ?>
 
-                                <div class="form-check form-switch">
+                            <tr>
+
+                                <td>
+                                    <strong>
+                                        <?= $start->format('g:i A') ?>
+                                        –
+                                        <?= $end->format('g:i A') ?>
+                                    </strong>
+                                </td>
+
+                                <td>
+                                    <label
+                                        for="capacity-<?= $slotId ?>"
+                                        class="visually-hidden"
+                                    >
+                                        Seats for
+                                        <?= $start->format('g:i A') ?>
+                                        to
+                                        <?= $end->format('g:i A') ?>
+                                    </label>
 
                                     <input
-                                        class="form-check-input"
-                                        type="checkbox"
-                                        name="enabled[<?= (int) $slot['id'] ?>]"
-                                        value="1"
-                                        <?= $slot['enabled']
-                                            ? 'checked'
-                                            : '' ?>
+                                        type="number"
+                                        id="capacity-<?= $slotId ?>"
+                                        name="capacity[<?= $slotId ?>]"
+                                        value="<?= (int) $slot['capacity'] ?>"
+                                        min="1"
+                                        max="999"
+                                        class="form-control"
                                     >
+                                </td>
 
-                                </div>
+                                <td>
 
-                            </td>
+                                    <div class="form-check form-switch">
 
-                        </tr>
+                                        <input
+                                            class="form-check-input"
+                                            type="checkbox"
+                                            id="enabled-<?= $slotId ?>"
+                                            name="enabled[<?= $slotId ?>]"
+                                            value="1"
+                                            <?= $slot['enabled'] ? 'checked' : '' ?>
+                                        >
 
-                    <?php endforeach; ?>
+                                        <label
+                                            class="form-check-label visually-hidden"
+                                            for="enabled-<?= $slotId ?>"
+                                        >
+                                            Enable
+                                            <?= $start->format('g:i A') ?>
+                                            to
+                                            <?= $end->format('g:i A') ?>
+                                        </label>
 
-                    </tbody>
+                                    </div>
 
-                </table>
+                                </td>
 
-            </div>
+                            </tr>
 
-            <div class="card-footer text-end">
+                        <?php endforeach; ?>
 
-                <button
-                    type="submit"
-                    class="btn btn-primary"
-                >
-                    Save Time Slots
-                </button>
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            <?php endif; ?>
+
+            <div class="card-footer bg-white p-3 p-md-4">
+
+                <div class="lfchd-mobile-actions justify-content-end">
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                        <?= empty($slots) ? 'disabled' : '' ?>
+                    >
+                        Save Time Slots
+                    </button>
+
+                </div>
 
             </div>
 

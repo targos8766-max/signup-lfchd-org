@@ -14,9 +14,9 @@ require __DIR__ . '/partials/header.php';
 
 ?>
 
-<div class="container py-5">
+<div class="container py-4 py-md-5">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
 
         <div>
             <h1 class="mb-1">
@@ -85,11 +85,10 @@ require __DIR__ . '/partials/header.php';
 
     <?php else: ?>
 
-        <div class="card shadow-sm">
+        <!-- Desktop / tablet table -->
+        <div class="card shadow-sm d-none d-md-block">
 
-            <div class="table-responsive">
-
-                <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0">
 
                     <thead class="table-light">
                     <tr>
@@ -99,9 +98,7 @@ require __DIR__ . '/partials/header.php';
                         <th>Status</th>
                         <th>Signups</th>
                         <th>Slots</th>
-                        <th style="width:260px;">
-                            Actions
-                        </th>
+                        <th style="width:120px;">Actions</th>
                     </tr>
                     </thead>
 
@@ -174,10 +171,7 @@ require __DIR__ . '/partials/header.php';
                             </td>
 
                             <td>
-
-                                <span
-                                    class="badge text-bg-<?= $statusClass ?>"
-                                >
+                                <span class="badge text-bg-<?= $statusClass ?>">
                                     <?= ucfirst(
                                         htmlspecialchars(
                                             $event['status'],
@@ -186,7 +180,6 @@ require __DIR__ . '/partials/header.php';
                                         )
                                     ) ?>
                                 </span>
-
                             </td>
 
                             <td>
@@ -200,162 +193,185 @@ require __DIR__ . '/partials/header.php';
                             </td>
 
                             <td>
-
-                                <div class="d-flex gap-2 flex-wrap">
-
-                                    <?php if ($isAdministrator): ?>
-
-                                        <a
-                                            href="/admin/events/<?= (int) $event['id'] ?>/slots"
-                                            class="btn btn-sm btn-outline-primary"
-                                        >
-                                            Slots
-                                        </a>
-
-                                    <?php endif; ?>
-
-                                    <a
-                                        href="<?= htmlspecialchars(
-                                            $publicUrl,
-                                            ENT_QUOTES,
-                                            'UTF-8'
-                                        ) ?>"
-                                        target="_blank"
-                                        class="btn btn-sm btn-outline-secondary"
-                                    >
-                                        Public Page
-                                    </a>
-
-                                    <?php if ($isAdministrator): ?>
-
-                                        <a
-                                            href="/admin/events/<?= (int) $event['id'] ?>/edit"
-                                            class="btn btn-sm btn-outline-primary"
-                                        >
-                                            Edit
-                                        </a>
-
-                                    <?php endif; ?>
-
-                                    <a
-                                        href="/admin/events/<?= (int) $event['id'] ?>/registrations"
-                                        class="btn btn-sm btn-outline-success"
-                                    >
-                                        Registrations
-                                    </a>
-
+                                <div class="dropdown">
                                     <button
+                                        class="btn btn-sm btn-outline-primary dropdown-toggle"
                                         type="button"
-                                        class="btn btn-sm btn-outline-secondary"
-                                        onclick="copySignupLink(
-                                            '<?= htmlspecialchars(
-                                                $publicUrl,
-                                                ENT_QUOTES,
-                                                'UTF-8'
-                                            ) ?>'
-                                        )"
+                                        data-bs-toggle="dropdown"
+                                        aria-expanded="false"
                                     >
-                                        Copy Link
+                                        Actions
                                     </button>
 
-                                    <?php if ($isAdministrator): ?>
+                                    <ul class="dropdown-menu dropdown-menu-end">
 
-                                        <?php if (
-                                            $event['status'] === 'draft'
-                                            || $event['status'] === 'closed'
-                                        ): ?>
-
-                                            <form
-                                                method="post"
-                                                action="/admin/events/<?= (int) $event['id'] ?>/open"
-                                                class="d-inline"
+                                        <li>
+                                            <a
+                                                class="dropdown-item"
+                                                href="/admin/events/<?= (int) $event['id'] ?>/registrations"
                                             >
-                                                <?= Csrf::field() ?>
+                                                Registrations
+                                            </a>
+                                        </li>
 
-                                                <button
-                                                    type="submit"
-                                                    class="btn btn-outline-success btn-sm"
-                                                    onclick="return confirm(
-                                                        'Open registration for this event?'
-                                                    );"
-                                                >
-                                                    Open Registration
-                                                </button>
-                                            </form>
-
-                                        <?php endif; ?>
-
-                                        <?php if ($event['status'] === 'open'): ?>
-
-                                            <form
-                                                method="post"
-                                                action="/admin/events/<?= (int) $event['id'] ?>/close"
-                                                class="d-inline"
+                                        <li>
+                                            <a
+                                                class="dropdown-item"
+                                                href="<?= htmlspecialchars(
+                                                    $publicUrl,
+                                                    ENT_QUOTES,
+                                                    'UTF-8'
+                                                ) ?>"
+                                                target="_blank"
                                             >
-                                                <?= Csrf::field() ?>
+                                                Public Page
+                                            </a>
+                                        </li>
 
-                                                <button
-                                                    type="submit"
-                                                    class="btn btn-outline-warning btn-sm"
-                                                    onclick="return confirm(
-                                                        'Close registration for this event? Existing registrations will remain.'
-                                                    );"
-                                                >
-                                                    Close Registration
-                                                </button>
-                                            </form>
-
-                                        <?php endif; ?>
-
-                                        <a
-                                            href="/admin/events/<?= (int) $event['id'] ?>/questions"
-                                            class="btn btn-outline-info btn-sm"
-                                        >
-                                            Questions
-                                        </a>
-
-                                        <form
-                                            method="post"
-                                            action="/admin/events/<?= (int) $event['id'] ?>/duplicate"
-                                            class="d-inline"
-                                        >
-                                            <?= Csrf::field() ?>
-
+                                        <li>
                                             <button
-                                                type="submit"
-                                                class="btn btn-outline-secondary btn-sm"
-                                                onclick="return confirm('Duplicate this event?');"
+                                                type="button"
+                                                class="dropdown-item"
+                                                onclick="copySignupLink(
+                                                    '<?= htmlspecialchars(
+                                                        $publicUrl,
+                                                        ENT_QUOTES,
+                                                        'UTF-8'
+                                                    ) ?>'
+                                                )"
                                             >
-                                                Duplicate
+                                                Copy Signup Link
                                             </button>
-                                        </form>
+                                        </li>
 
-                                        <?php if ($event['status'] === 'draft'): ?>
+                                        <?php if ($isAdministrator): ?>
 
-                                            <form
-                                                method="post"
-                                                action="/admin/events/<?= (int) $event['id'] ?>/delete"
-                                                class="d-inline"
-                                            >
-                                                <?= Csrf::field() ?>
+                                            <li><hr class="dropdown-divider"></li>
 
-                                                <button
-                                                    type="submit"
-                                                    class="btn btn-outline-danger btn-sm"
-                                                    onclick="return confirm(
-                                                        'Delete this draft event? This action cannot be undone.'
-                                                    );"
+                                            <li>
+                                                <a
+                                                    class="dropdown-item"
+                                                    href="/admin/events/<?= (int) $event['id'] ?>/edit"
                                                 >
-                                                    Delete
-                                                </button>
-                                            </form>
+                                                    Edit Event
+                                                </a>
+                                            </li>
+
+                                            <li>
+                                                <a
+                                                    class="dropdown-item"
+                                                    href="/admin/events/<?= (int) $event['id'] ?>/slots"
+                                                >
+                                                    Manage Slots
+                                                </a>
+                                            </li>
+
+                                            <li>
+                                                <a
+                                                    class="dropdown-item"
+                                                    href="/admin/events/<?= (int) $event['id'] ?>/questions"
+                                                >
+                                                    Questions
+                                                </a>
+                                            </li>
+
+                                            <li><hr class="dropdown-divider"></li>
+
+                                            <?php if (
+                                                $event['status'] === 'draft'
+                                                || $event['status'] === 'closed'
+                                            ): ?>
+
+                                                <li>
+                                                    <form
+                                                        method="post"
+                                                        action="/admin/events/<?= (int) $event['id'] ?>/open"
+                                                    >
+                                                        <?= Csrf::field() ?>
+
+                                                        <button
+                                                            type="submit"
+                                                            class="dropdown-item text-success"
+                                                            onclick="return confirm(
+                                                                'Open registration for this event?'
+                                                            );"
+                                                        >
+                                                            Open Registration
+                                                        </button>
+                                                    </form>
+                                                </li>
+
+                                            <?php endif; ?>
+
+                                            <?php if ($event['status'] === 'open'): ?>
+
+                                                <li>
+                                                    <form
+                                                        method="post"
+                                                        action="/admin/events/<?= (int) $event['id'] ?>/close"
+                                                    >
+                                                        <?= Csrf::field() ?>
+
+                                                        <button
+                                                            type="submit"
+                                                            class="dropdown-item text-warning"
+                                                            onclick="return confirm(
+                                                                'Close registration for this event? Existing registrations will remain.'
+                                                            );"
+                                                        >
+                                                            Close Registration
+                                                        </button>
+                                                    </form>
+                                                </li>
+
+                                            <?php endif; ?>
+
+                                            <li>
+                                                <form
+                                                    method="post"
+                                                    action="/admin/events/<?= (int) $event['id'] ?>/duplicate"
+                                                >
+                                                    <?= Csrf::field() ?>
+
+                                                    <button
+                                                        type="submit"
+                                                        class="dropdown-item"
+                                                        onclick="return confirm('Duplicate this event?');"
+                                                    >
+                                                        Duplicate Event
+                                                    </button>
+                                                </form>
+                                            </li>
+
+                                            <?php if ($event['status'] === 'draft'): ?>
+
+                                                <li><hr class="dropdown-divider"></li>
+
+                                                <li>
+                                                    <form
+                                                        method="post"
+                                                        action="/admin/events/<?= (int) $event['id'] ?>/delete"
+                                                    >
+                                                        <?= Csrf::field() ?>
+
+                                                        <button
+                                                            type="submit"
+                                                            class="dropdown-item text-danger"
+                                                            onclick="return confirm(
+                                                                'Delete this draft event? This action cannot be undone.'
+                                                            );"
+                                                        >
+                                                            Delete Event
+                                                        </button>
+                                                    </form>
+                                                </li>
+
+                                            <?php endif; ?>
 
                                         <?php endif; ?>
 
-                                    <?php endif; ?>
-
+                                    </ul>
                                 </div>
-
                             </td>
 
                         </tr>
@@ -364,9 +380,304 @@ require __DIR__ . '/partials/header.php';
 
                     </tbody>
 
-                </table>
+            </table>
 
-            </div>
+        </div>
+
+        <!-- Mobile cards -->
+        <div class="d-md-none">
+
+            <?php foreach ($events as $event): ?>
+
+                <?php
+                $date = new DateTimeImmutable(
+                    $event['event_date']
+                );
+
+                $start = new DateTimeImmutable(
+                    $event['event_date']
+                    . ' '
+                    . $event['start_time']
+                );
+
+                $end = new DateTimeImmutable(
+                    $event['event_date']
+                    . ' '
+                    . $event['end_time']
+                );
+
+                $publicUrl =
+                    ($_ENV['APP_URL'] ?? '')
+                    . '/event/'
+                    . $event['public_slug'];
+
+                $statusClass = match ($event['status']) {
+                    'open' => 'success',
+                    'closed' => 'secondary',
+                    'cancelled' => 'danger',
+                    default => 'warning',
+                };
+                ?>
+
+                <div class="card shadow-sm mb-3">
+
+                    <div class="card-body">
+
+                        <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+
+                            <div>
+                                <h2 class="h5 mb-1">
+                                    <?= htmlspecialchars(
+                                        $event['title'],
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    ) ?>
+                                </h2>
+
+                                <?php if (!empty($event['location'])): ?>
+                                    <div class="small text-muted">
+                                        <?= htmlspecialchars(
+                                            $event['location'],
+                                            ENT_QUOTES,
+                                            'UTF-8'
+                                        ) ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+
+                            <span class="badge text-bg-<?= $statusClass ?>">
+                                <?= ucfirst(
+                                    htmlspecialchars(
+                                        $event['status'],
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    )
+                                ) ?>
+                            </span>
+
+                        </div>
+
+                        <div class="row g-2 small mb-3">
+
+                            <div class="col-6">
+                                <div class="text-muted">Date</div>
+                                <div class="fw-semibold">
+                                    <?= $date->format('M j, Y') ?>
+                                </div>
+                            </div>
+
+                            <div class="col-6">
+                                <div class="text-muted">Time</div>
+                                <div class="fw-semibold">
+                                    <?= $start->format('g:i A') ?>
+                                    –
+                                    <?= $end->format('g:i A') ?>
+                                </div>
+                            </div>
+
+                            <div class="col-6">
+                                <div class="text-muted">Signups</div>
+                                <div class="fw-semibold">
+                                    <?= (int) $event['registration_count'] ?>
+                                    /
+                                    <?= (int) $event['total_capacity'] ?>
+                                </div>
+                            </div>
+
+                            <div class="col-6">
+                                <div class="text-muted">Slots</div>
+                                <div class="fw-semibold">
+                                    <?= (int) $event['slot_count'] ?>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="dropdown d-grid">
+                            <button
+                                class="btn btn-outline-primary dropdown-toggle"
+                                type="button"
+                                data-bs-toggle="dropdown"
+                                aria-expanded="false"
+                            >
+                                Event Actions
+                            </button>
+
+                            <ul class="dropdown-menu w-100">
+
+                                <li>
+                                    <a
+                                        class="dropdown-item"
+                                        href="/admin/events/<?= (int) $event['id'] ?>/registrations"
+                                    >
+                                        Registrations
+                                    </a>
+                                </li>
+
+                                <li>
+                                    <a
+                                        class="dropdown-item"
+                                        href="<?= htmlspecialchars(
+                                            $publicUrl,
+                                            ENT_QUOTES,
+                                            'UTF-8'
+                                        ) ?>"
+                                        target="_blank"
+                                    >
+                                        Public Page
+                                    </a>
+                                </li>
+
+                                <li>
+                                    <button
+                                        type="button"
+                                        class="dropdown-item"
+                                        onclick="copySignupLink(
+                                            '<?= htmlspecialchars(
+                                                $publicUrl,
+                                                ENT_QUOTES,
+                                                'UTF-8'
+                                            ) ?>'
+                                        )"
+                                    >
+                                        Copy Signup Link
+                                    </button>
+                                </li>
+
+                                <?php if ($isAdministrator): ?>
+
+                                    <li><hr class="dropdown-divider"></li>
+
+                                    <li>
+                                        <a
+                                            class="dropdown-item"
+                                            href="/admin/events/<?= (int) $event['id'] ?>/edit"
+                                        >
+                                            Edit Event
+                                        </a>
+                                    </li>
+
+                                    <li>
+                                        <a
+                                            class="dropdown-item"
+                                            href="/admin/events/<?= (int) $event['id'] ?>/slots"
+                                        >
+                                            Manage Slots
+                                        </a>
+                                    </li>
+
+                                    <li>
+                                        <a
+                                            class="dropdown-item"
+                                            href="/admin/events/<?= (int) $event['id'] ?>/questions"
+                                        >
+                                            Questions
+                                        </a>
+                                    </li>
+
+                                    <li><hr class="dropdown-divider"></li>
+
+                                    <?php if (
+                                        $event['status'] === 'draft'
+                                        || $event['status'] === 'closed'
+                                    ): ?>
+
+                                        <li>
+                                            <form
+                                                method="post"
+                                                action="/admin/events/<?= (int) $event['id'] ?>/open"
+                                            >
+                                                <?= Csrf::field() ?>
+
+                                                <button
+                                                    type="submit"
+                                                    class="dropdown-item text-success"
+                                                    onclick="return confirm(
+                                                        'Open registration for this event?'
+                                                    );"
+                                                >
+                                                    Open Registration
+                                                </button>
+                                            </form>
+                                        </li>
+
+                                    <?php endif; ?>
+
+                                    <?php if ($event['status'] === 'open'): ?>
+
+                                        <li>
+                                            <form
+                                                method="post"
+                                                action="/admin/events/<?= (int) $event['id'] ?>/close"
+                                            >
+                                                <?= Csrf::field() ?>
+
+                                                <button
+                                                    type="submit"
+                                                    class="dropdown-item text-warning"
+                                                    onclick="return confirm(
+                                                        'Close registration for this event? Existing registrations will remain.'
+                                                    );"
+                                                >
+                                                    Close Registration
+                                                </button>
+                                            </form>
+                                        </li>
+
+                                    <?php endif; ?>
+
+                                    <li>
+                                        <form
+                                            method="post"
+                                            action="/admin/events/<?= (int) $event['id'] ?>/duplicate"
+                                        >
+                                            <?= Csrf::field() ?>
+
+                                            <button
+                                                type="submit"
+                                                class="dropdown-item"
+                                                onclick="return confirm('Duplicate this event?');"
+                                            >
+                                                Duplicate Event
+                                            </button>
+                                        </form>
+                                    </li>
+
+                                    <?php if ($event['status'] === 'draft'): ?>
+
+                                        <li><hr class="dropdown-divider"></li>
+
+                                        <li>
+                                            <form
+                                                method="post"
+                                                action="/admin/events/<?= (int) $event['id'] ?>/delete"
+                                            >
+                                                <?= Csrf::field() ?>
+
+                                                <button
+                                                    type="submit"
+                                                    class="dropdown-item text-danger"
+                                                    onclick="return confirm(
+                                                        'Delete this draft event? This action cannot be undone.'
+                                                    );"
+                                                >
+                                                    Delete Event
+                                                </button>
+                                            </form>
+                                        </li>
+
+                                    <?php endif; ?>
+
+                                <?php endif; ?>
+
+                            </ul>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            <?php endforeach; ?>
 
         </div>
 

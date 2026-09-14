@@ -10,12 +10,12 @@ $pageTitle = 'Edit Event | LFCHD Signup';
 require dirname(__DIR__) . '/partials/header.php';
 ?>
 
-<div class="container py-5">
+<div class="container py-4 py-md-5">
 
     <div class="row justify-content-center">
-        <div class="col-lg-8">
+        <div class="col-12 col-lg-10 col-xl-8">
 
-            <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
 
                 <div>
                     <h1 class="mb-1">
@@ -27,25 +27,27 @@ require dirname(__DIR__) . '/partials/header.php';
                     </div>
                 </div>
 
-                <a
-                    href="/admin/events/<?= (int) $event['id'] ?>/slots"
-                    class="btn btn-outline-secondary"
-                >
-                    Manage Slots
-                </a>
+                <div class="lfchd-mobile-actions">
+                    <a
+                        href="/admin/events/<?= (int) $event['id'] ?>/slots"
+                        class="btn btn-outline-secondary"
+                    >
+                        Manage Slots
+                    </a>
 
-                <a
-                    href="/admin/events/<?= (int) $event['id'] ?>/questions"
-                    class="btn btn-outline-info"
-                >
-                    Questions
-                </a>
+                    <a
+                        href="/admin/events/<?= (int) $event['id'] ?>/questions"
+                        class="btn btn-outline-info"
+                    >
+                        Questions
+                    </a>
+                </div>
 
             </div>
 
             <?php if (isset($_GET['saved'])): ?>
 
-                <div class="alert alert-success">
+                <div class="alert alert-success" role="alert">
                     Event updated successfully.
                 </div>
 
@@ -53,13 +55,13 @@ require dirname(__DIR__) . '/partials/header.php';
 
             <?php if (!empty($errors)): ?>
 
-                <div class="alert alert-danger">
-                    <ul class="mb-0">
+                <div class="alert alert-danger" role="alert">
+                    <strong>Please correct the following:</strong>
+
+                    <ul class="mb-0 mt-2">
 
                         <?php foreach ($errors as $error): ?>
-                            <li>
-                                <?= htmlspecialchars($error) ?>
-                            </li>
+                            <li><?= htmlspecialchars($error) ?></li>
                         <?php endforeach; ?>
 
                     </ul>
@@ -67,7 +69,7 @@ require dirname(__DIR__) . '/partials/header.php';
 
             <?php endif; ?>
 
-            <div class="alert alert-warning">
+            <div class="alert alert-warning" role="alert">
                 Changing the date, start time, end time, interval, or default
                 capacity does not currently regenerate existing time slots.
                 Existing slots must be managed separately.
@@ -81,257 +83,335 @@ require dirname(__DIR__) . '/partials/header.php';
 
                 <?= Csrf::field() ?>
 
-                <div class="card-body">
+                <div class="card-body p-3 p-md-4">
 
-                    <div class="mb-3">
-                        <label class="form-label">
-                            Event Name
-                        </label>
+                    <section aria-labelledby="event-details-heading">
 
-                        <input
-                            type="text"
-                            name="title"
-                            class="form-control"
-                            required
-                            value="<?= htmlspecialchars($event['title']) ?>"
+                        <h2
+                            id="event-details-heading"
+                            class="h5 mb-3"
                         >
-                    </div>
+                            Event Details
+                        </h2>
 
-                    <div class="mb-3">
-                        <label class="form-label">
-                            Description
-                        </label>
+                        <div class="mb-3">
+                            <label
+                                for="title"
+                                class="form-label"
+                            >
+                                Event Name
+                            </label>
 
-                        <textarea
-                            name="description"
-                            class="form-control"
-                            rows="4"
-                        ><?= htmlspecialchars($event['description'] ?? '') ?></textarea>
-                    </div>
+                            <input
+                                type="text"
+                                id="title"
+                                name="title"
+                                class="form-control"
+                                required
+                                value="<?= htmlspecialchars($event['title']) ?>"
+                            >
+                        </div>
 
-                    <div class="mb-3">
-                        <label class="form-label">
-                            Location
-                        </label>
+                        <div class="mb-3">
+                            <label
+                                for="description"
+                                class="form-label"
+                            >
+                                Description
+                            </label>
 
-                        <input
-                            type="text"
-                            name="location"
-                            class="form-control"
-                            value="<?= htmlspecialchars($event['location'] ?? '') ?>"
+                            <textarea
+                                id="description"
+                                name="description"
+                                class="form-control"
+                                rows="4"
+                            ><?= htmlspecialchars($event['description'] ?? '') ?></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label
+                                for="location"
+                                class="form-label"
+                            >
+                                Location
+                            </label>
+
+                            <input
+                                type="text"
+                                id="location"
+                                name="location"
+                                class="form-control"
+                                value="<?= htmlspecialchars($event['location'] ?? '') ?>"
+                            >
+                        </div>
+
+                    </section>
+
+                    <hr class="my-4">
+
+                    <section aria-labelledby="schedule-heading">
+
+                        <h2
+                            id="schedule-heading"
+                            class="h5 mb-3"
                         >
-                    </div>
+                            Schedule
+                        </h2>
 
-                    <hr>
+                        <div class="row g-3">
 
-                    <div class="row">
+                            <div class="col-12 col-md-4">
+                                <label
+                                    for="event_date"
+                                    class="form-label"
+                                >
+                                    Event Date
+                                </label>
 
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">
-                                Event Date
-                            </label>
+                                <input
+                                    type="date"
+                                    id="event_date"
+                                    name="event_date"
+                                    class="form-control"
+                                    required
+                                    value="<?= htmlspecialchars($event['event_date']) ?>"
+                                >
+                            </div>
 
-                            <input
-                                type="date"
-                                name="event_date"
-                                class="form-control"
-                                required
-                                value="<?= htmlspecialchars($event['event_date']) ?>"
-                            >
+                            <div class="col-12 col-md-4">
+                                <label
+                                    for="start_time"
+                                    class="form-label"
+                                >
+                                    Start Time
+                                </label>
+
+                                <input
+                                    type="time"
+                                    id="start_time"
+                                    name="start_time"
+                                    class="form-control"
+                                    required
+                                    value="<?= htmlspecialchars(
+                                        substr($event['start_time'], 0, 5)
+                                    ) ?>"
+                                >
+                            </div>
+
+                            <div class="col-12 col-md-4">
+                                <label
+                                    for="end_time"
+                                    class="form-label"
+                                >
+                                    End Time
+                                </label>
+
+                                <input
+                                    type="time"
+                                    id="end_time"
+                                    name="end_time"
+                                    class="form-control"
+                                    required
+                                    value="<?= htmlspecialchars(
+                                        substr($event['end_time'], 0, 5)
+                                    ) ?>"
+                                >
+                            </div>
+
                         </div>
 
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">
-                                Start Time
-                            </label>
+                        <div class="row g-3 mt-0">
 
-                            <input
-                                type="time"
-                                name="start_time"
-                                class="form-control"
-                                required
-                                value="<?= htmlspecialchars(
-                                    substr($event['start_time'], 0, 5)
-                                ) ?>"
-                            >
+                            <div class="col-12 col-md-6">
+                                <label
+                                    for="interval_minutes"
+                                    class="form-label"
+                                >
+                                    Interval
+                                </label>
+
+                                <select
+                                    id="interval_minutes"
+                                    name="interval_minutes"
+                                    class="form-select"
+                                    required
+                                >
+
+                                    <?php foreach ([5, 10, 15, 20, 30, 45, 60] as $interval): ?>
+
+                                        <option
+                                            value="<?= $interval ?>"
+                                            <?= (int) $event['interval_minutes'] === $interval
+                                                ? 'selected'
+                                                : '' ?>
+                                        >
+                                            <?= $interval ?> minutes
+                                        </option>
+
+                                    <?php endforeach; ?>
+
+                                </select>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label
+                                    for="default_capacity"
+                                    class="form-label"
+                                >
+                                    Default Seats Per Time
+                                </label>
+
+                                <input
+                                    type="number"
+                                    id="default_capacity"
+                                    name="default_capacity"
+                                    class="form-control"
+                                    min="1"
+                                    max="999"
+                                    required
+                                    value="<?= (int) $event['default_capacity'] ?>"
+                                >
+                            </div>
+
                         </div>
 
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">
-                                End Time
-                            </label>
+                    </section>
 
-                            <input
-                                type="time"
-                                name="end_time"
-                                class="form-control"
-                                required
-                                value="<?= htmlspecialchars(
-                                    substr($event['end_time'], 0, 5)
-                                ) ?>"
+                    <hr class="my-4">
+
+                    <section aria-labelledby="registration-settings-heading">
+
+                        <h2
+                            id="registration-settings-heading"
+                            class="h5 mb-3"
+                        >
+                            Registration Settings
+                        </h2>
+
+                        <div class="mb-3">
+                            <label
+                                for="status"
+                                class="form-label"
                             >
-                        </div>
-
-                    </div>
-
-                    <div class="row">
-
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">
-                                Interval
+                                Status
                             </label>
 
                             <select
-                                name="interval_minutes"
+                                id="status"
+                                name="status"
                                 class="form-select"
-                                required
                             >
 
-                                <?php foreach ([5, 10, 15, 20, 30, 45, 60] as $interval): ?>
+                                <?php foreach ([
+                                    'draft' => 'Draft',
+                                    'open' => 'Open',
+                                    'closed' => 'Closed',
+                                    'cancelled' => 'Cancelled',
+                                ] as $value => $label): ?>
 
                                     <option
-                                        value="<?= $interval ?>"
-                                        <?= (int) $event['interval_minutes'] === $interval
-                                            ? 'selected'
-                                            : '' ?>
+                                        value="<?= $value ?>"
+                                        <?= $event['status'] === $value ? 'selected' : '' ?>
                                     >
-                                        <?= $interval ?> minutes
+                                        <?= $label ?>
                                     </option>
 
                                 <?php endforeach; ?>
 
                             </select>
+
+                            <div class="form-text">
+                                Only open events will accept public registrations.
+                            </div>
                         </div>
 
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">
-                                Default Seats Per Time
-                            </label>
+                        <?php
+                        $signupOpenValue = '';
 
-                            <input
-                                type="number"
-                                name="default_capacity"
-                                class="form-control"
-                                min="1"
-                                max="999"
-                                required
-                                value="<?= (int) $event['default_capacity'] ?>"
-                            >
-                        </div>
+                        if (!empty($event['signup_open_at'])) {
+                            $signupOpenValue = (
+                                new DateTimeImmutable($event['signup_open_at'])
+                            )->format('Y-m-d\TH:i');
+                        }
 
-                    </div>
+                        $signupCloseValue = '';
 
-                    <hr>
+                        if (!empty($event['signup_close_at'])) {
+                            $signupCloseValue = (
+                                new DateTimeImmutable($event['signup_close_at'])
+                            )->format('Y-m-d\TH:i');
+                        }
+                        ?>
 
-                    <div class="mb-3">
-                        <label class="form-label">
-                            Status
-                        </label>
+                        <div class="row g-3">
 
-                        <select
-                            name="status"
-                            class="form-select"
-                        >
-
-                            <?php foreach ([
-                                'draft' => 'Draft',
-                                'open' => 'Open',
-                                'closed' => 'Closed',
-                                'cancelled' => 'Cancelled',
-                            ] as $value => $label): ?>
-
-                                <option
-                                    value="<?= $value ?>"
-                                    <?= $event['status'] === $value
-                                        ? 'selected'
-                                        : '' ?>
+                            <div class="col-12 col-md-6">
+                                <label
+                                    for="signup_open_at"
+                                    class="form-label"
                                 >
-                                    <?= $label ?>
-                                </option>
+                                    Signup Opens
+                                </label>
 
-                            <?php endforeach; ?>
+                                <input
+                                    type="datetime-local"
+                                    id="signup_open_at"
+                                    name="signup_open_at"
+                                    class="form-control"
+                                    value="<?= htmlspecialchars($signupOpenValue) ?>"
+                                >
 
-                        </select>
-
-                        <div class="form-text">
-                            Only open events will eventually accept public
-                            registrations.
-                        </div>
-                    </div>
-
-                    <?php
-                    $signupOpenValue = '';
-
-                    if (!empty($event['signup_open_at'])) {
-                        $signupOpenValue = (
-                            new DateTimeImmutable($event['signup_open_at'])
-                        )->format('Y-m-d\TH:i');
-                    }
-
-                    $signupCloseValue = '';
-
-                    if (!empty($event['signup_close_at'])) {
-                        $signupCloseValue = (
-                            new DateTimeImmutable($event['signup_close_at'])
-                        )->format('Y-m-d\TH:i');
-                    }
-                    ?>
-
-                    <div class="row">
-
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">
-                                Signup Opens
-                            </label>
-
-                            <input
-                                type="datetime-local"
-                                name="signup_open_at"
-                                class="form-control"
-                                value="<?= htmlspecialchars($signupOpenValue) ?>"
-                            >
-
-                            <div class="form-text">
-                                Optional.
+                                <div class="form-text">
+                                    Optional.
+                                </div>
                             </div>
-                        </div>
 
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">
-                                Signup Closes
-                            </label>
+                            <div class="col-12 col-md-6">
+                                <label
+                                    for="signup_close_at"
+                                    class="form-label"
+                                >
+                                    Signup Closes
+                                </label>
 
-                            <input
-                                type="datetime-local"
-                                name="signup_close_at"
-                                class="form-control"
-                                value="<?= htmlspecialchars($signupCloseValue) ?>"
-                            >
+                                <input
+                                    type="datetime-local"
+                                    id="signup_close_at"
+                                    name="signup_close_at"
+                                    class="form-control"
+                                    value="<?= htmlspecialchars($signupCloseValue) ?>"
+                                >
 
-                            <div class="form-text">
-                                Optional.
+                                <div class="form-text">
+                                    Optional.
+                                </div>
                             </div>
+
                         </div>
 
-                    </div>
+                    </section>
 
                 </div>
 
-                <div class="card-footer d-flex justify-content-between">
+                <div class="card-footer bg-white p-3 p-md-4">
 
-                    <a
-                        href="/admin"
-                        class="btn btn-outline-secondary"
-                    >
-                        Back to Events
-                    </a>
+                    <div class="lfchd-mobile-actions justify-content-between">
 
-                    <button
-                        type="submit"
-                        class="btn btn-primary"
-                    >
-                        Save Changes
-                    </button>
+                        <a
+                            href="/admin"
+                            class="btn btn-outline-secondary"
+                        >
+                            Back to Events
+                        </a>
+
+                        <button
+                            type="submit"
+                            class="btn btn-primary"
+                        >
+                            Save Changes
+                        </button>
+
+                    </div>
 
                 </div>
 
