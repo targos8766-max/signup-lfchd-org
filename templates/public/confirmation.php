@@ -1,14 +1,24 @@
 <?php
 $language = ($registration['preferred_language'] ?? 'en') === 'es' ? 'es' : 'en';
 
-$eventTitle = trim((string)($language === 'es' ? ($event['title_es'] ?? '') : ''));
+$eventTitle = trim((string)(
+    $language === 'es'
+        ? ($registration['title_es'] ?? '')
+        : ($registration['title'] ?? '')
+));
+
 if ($eventTitle === '') {
-    $eventTitle = (string)($event['title'] ?? '');
+    $eventTitle = (string)($registration['title'] ?? '');
 }
 
-$eventLocation = trim((string)($language === 'es' ? ($event['location_es'] ?? '') : ''));
+$eventLocation = trim((string)(
+    $language === 'es'
+        ? ($registration['location_es'] ?? '')
+        : ($registration['location'] ?? '')
+));
+
 if ($eventLocation === '') {
-    $eventLocation = (string)($event['location'] ?? '');
+    $eventLocation = (string)($registration['location'] ?? '');
 }
 
 function publicConfirmationDate(string $dateTime, string $language): string
@@ -148,12 +158,12 @@ $isCancelled = ($registration['status'] ?? '') === 'cancelled';
 
                         <div class="lfchd-confirmation-row">
                             <div class="lfchd-confirmation-label"><?= htmlspecialchars($labels['date'], ENT_QUOTES, 'UTF-8') ?></div>
-                            <div class="lfchd-confirmation-value"><?= htmlspecialchars(publicConfirmationDate((string)$slot['start_datetime'], $language), ENT_QUOTES, 'UTF-8') ?></div>
+                            <div class="lfchd-confirmation-value"><?= htmlspecialchars(publicConfirmationDate((string)$registration['start_datetime'], $language), ENT_QUOTES, 'UTF-8') ?></div>
                         </div>
 
                         <div class="lfchd-confirmation-row">
                             <div class="lfchd-confirmation-label"><?= htmlspecialchars($labels['time'], ENT_QUOTES, 'UTF-8') ?></div>
-                            <div class="lfchd-confirmation-value"><?= htmlspecialchars((new DateTimeImmutable((string)$slot['start_datetime']))->format('g:i A'), ENT_QUOTES, 'UTF-8') ?></div>
+                            <div class="lfchd-confirmation-value"><?= htmlspecialchars((new DateTimeImmutable((string)$registration['start_datetime']))->format('g:i A'), ENT_QUOTES, 'UTF-8') ?></div>
                         </div>
 
                         <?php if ($eventLocation !== ''): ?>
@@ -192,7 +202,7 @@ $isCancelled = ($registration['status'] ?? '') === 'cancelled';
 
                             <form
                                 method="post"
-                                action="/event/<?= rawurlencode((string)$event['public_slug']) ?>/confirmation/<?= rawurlencode((string)$registration['confirmation_code']) ?>/cancel"
+                                action="/event/<?= rawurlencode((string)$registration['public_slug']) ?>/confirmation/<?= rawurlencode((string)$registration['confirmation_code']) ?>/cancel"
                                 onsubmit="return confirm(<?= json_encode($labels['cancel_confirm'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>);"
                             >
                                 <?= \Boneblaze\SignupLfchdOrg\Services\Csrf::field() ?>

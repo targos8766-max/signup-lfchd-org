@@ -122,12 +122,19 @@ if (
 }
 
 /*
- * Public routes
+ * Public landing page
  */
-if ($path === '/') {
-    header('Location: /admin');
+if (
+    $method === 'GET'
+    && $path === '/'
+) {
+    require dirname(__DIR__) . '/templates/public/home.php';
     exit;
 }
+
+/*
+ * Public routes
+ */
 
 if (
     preg_match(

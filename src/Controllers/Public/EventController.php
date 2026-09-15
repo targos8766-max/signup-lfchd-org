@@ -101,7 +101,7 @@ class EventController
         $slots = $slotStatement->fetchAll();
 
         foreach ($slots as &$slot) {
-            $slot['remaining'] = max(
+            $slot['available'] = max(
                 0,
                 (int) $slot['capacity']
                 - (int) $slot['registered_count']
