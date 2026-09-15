@@ -23,6 +23,42 @@ final class TwilioController
             trim((string) ($_POST['OptOutType'] ?? ''))
         );
 
+        $body = strtoupper(
+            trim((string) ($_POST['Body'] ?? ''))
+        );
+
+        if ($optOutType === '') {
+            $optOutKeywords = [
+                'STOP',
+                'UNSUBSCRIBE',
+                'END',
+                'QUIT',
+                'STOPALL',
+                'CANCEL',
+                'REVOKE',
+                'OPTOUT',
+            ];
+
+            $optInKeywords = [
+                'START',
+                'UNSTOP',
+            ];
+
+            $helpKeywords = [
+                'HELP',
+                'INFO',
+                'SUPPORT',
+            ];
+
+            if (in_array($body, $optOutKeywords, true)) {
+                $optOutType = 'STOP';
+            } elseif (in_array($body, $optInKeywords, true)) {
+                $optOutType = 'START';
+            } elseif (in_array($body, $helpKeywords, true)) {
+                $optOutType = 'HELP';
+            }
+        }
+
         if ($from !== '' && $optOutType !== '') {
             $contacts = new SmsContactService();
 
