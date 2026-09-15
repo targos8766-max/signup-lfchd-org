@@ -115,7 +115,7 @@ $labels = $language === 'es'
         'last_name' => 'Last Name',
         'email' => 'Email',
         'phone' => 'Phone',
-        'sms_opt_in' => 'I agree to receive text messages from LFCHD related to this registration.',
+        'sms_opt_in' => 'I agree to receive text messages from LFCHD at the mobile phone number provided above related to this registration.',
         'sms_note' => 'Messages may include registration confirmations, reminders, scheduling information, cancellations, and event-related updates. Message frequency varies based on your registration. You may receive up to 5 SMS messages per event registration. Message and data rates may apply. Reply STOP to opt out or HELP for help. Consent to receive text messages is optional and is not required to register.',
         'additional_info' => 'Additional Information',
         'required' => 'Required',
