@@ -70,11 +70,28 @@ class EventController
         $pdo = Database::connection();
 
         $statement = $pdo->prepare(
-            'SELECT *
-             FROM event_questions
-             WHERE event_id = ?
-             AND enabled = 1
-             ORDER BY sort_order, id'
+            'SELECT
+                q.*,
+                s.title AS section_title,
+                s.title_es AS section_title_es,
+                s.description AS section_description,
+                s.description_es AS section_description_es,
+                s.sort_order AS section_sort_order
+             FROM event_questions q
+             LEFT JOIN event_question_sections s
+                ON s.id = q.section_id
+                AND s.event_id = q.event_id
+             WHERE q.event_id = ?
+               AND q.enabled = 1
+               AND (
+                    q.section_id IS NULL
+                    OR s.enabled = 1
+               )
+             ORDER BY
+                CASE WHEN q.section_id IS NULL THEN 0 ELSE 1 END,
+                COALESCE(s.sort_order, 0),
+                q.sort_order,
+                q.id'
         );
 
         $statement->execute([$eventId]);
@@ -432,6 +449,14 @@ class EventController
                 'closed' => 'El registro está cerrado.',
                 'required_suffix' => ' es obligatorio.',
                 'invalid_option_prefix' => 'Seleccione una opción válida para ',
+                'invalid_email_question' => 'Ingrese una dirección de correo electrónico válida para ',
+                'invalid_phone_question' => 'Ingrese un número de teléfono válido de EE. UU. para ',
+                'invalid_date_question' => 'Ingrese una fecha válida para ',
+                'future_birthdate_question' => 'La fecha de nacimiento no puede ser futura para ',
+                'invalid_number_question' => 'Ingrese un número válido para ',
+                'minimum_age_prefix' => 'La edad mínima para ',
+                'maximum_age_prefix' => 'La edad máxima para ',
+                'years_suffix' => ' años.',
                 'slot_unavailable' => 'La hora seleccionada ya no está disponible.',
                 'slot_full' => 'La hora seleccionada está llena. Seleccione otra hora.',
             ]
@@ -447,6 +472,14 @@ class EventController
                 'closed' => 'Registration is closed.',
                 'required_suffix' => ' is required.',
                 'invalid_option_prefix' => 'Please select a valid option for ',
+                'invalid_email_question' => 'Please enter a valid email address for ',
+                'invalid_phone_question' => 'Please enter a valid U.S. phone number for ',
+                'invalid_date_question' => 'Please enter a valid date for ',
+                'future_birthdate_question' => 'Birthdate cannot be in the future for ',
+                'invalid_number_question' => 'Please enter a valid number for ',
+                'minimum_age_prefix' => 'Minimum age for ',
+                'maximum_age_prefix' => 'Maximum age for ',
+                'years_suffix' => ' years.',
                 'slot_unavailable' => 'The selected time is no longer available.',
                 'slot_full' => 'The selected time is full. Please choose another time.',
             ];
@@ -630,6 +663,49 @@ class EventController
                     . $questionText
                     . '.';
             }
+            if (
+                $answer !== ''
+                && in_array($question['question_type'], ['text', 'textarea'], true)
+            ) {
+                $dataType = (string) ($question['data_type'] ?? 'text');
+
+                if ($dataType === 'email' && !filter_var($answer, FILTER_VALIDATE_EMAIL)) {
+                    $errors[] = $messages['invalid_email_question'] . $questionText . '.';
+                }
+
+                if ($dataType === 'phone' && $this->normalizeSmsPhone($answer) === null) {
+                    $errors[] = $messages['invalid_phone_question'] . $questionText . '.';
+                }
+
+                if (in_array($dataType, ['date', 'birthdate'], true)) {
+                    $date = $this->strictDate($answer);
+
+                    if ($date === null) {
+                        $errors[] = $messages['invalid_date_question'] . $questionText . '.';
+                    } elseif ($dataType === 'birthdate' && $date > new DateTimeImmutable('today')) {
+                        $errors[] = $messages['future_birthdate_question'] . $questionText . '.';
+                    } elseif ($dataType === 'birthdate') {
+                        $validation = json_decode((string) ($question['validation_json'] ?? ''), true);
+                        $validation = is_array($validation) ? $validation : [];
+                        $age = $date->diff(new DateTimeImmutable('today'))->y;
+
+                        if (isset($validation['min_age']) && $age < (int) $validation['min_age']) {
+                            $errors[] = $messages['minimum_age_prefix'] . $questionText . ': '
+                                . (int) $validation['min_age'] . $messages['years_suffix'];
+                        }
+
+                        if (isset($validation['max_age']) && $age > (int) $validation['max_age']) {
+                            $errors[] = $messages['maximum_age_prefix'] . $questionText . ': '
+                                . (int) $validation['max_age'] . $messages['years_suffix'];
+                        }
+                    }
+                }
+
+                if ($dataType === 'number' && !is_numeric($answer)) {
+                    $errors[] = $messages['invalid_number_question'] . $questionText . '.';
+                }
+            }
+
         }
 
         /*
@@ -1133,6 +1209,17 @@ class EventController
 
         require dirname(__DIR__, 3)
             . '/templates/public/event.php';
+    }
+
+    private function strictDate(string $value): ?DateTimeImmutable
+    {
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+
+        if (!$date || $date->format('Y-m-d') !== $value) {
+            return null;
+        }
+
+        return $date;
     }
 
     private function normalizeSmsPhone(

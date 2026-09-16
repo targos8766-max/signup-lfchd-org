@@ -129,6 +129,52 @@ $errors = $errors ?? [];
 $questions = $questions ?? [];
 $slots = $slots ?? [];
 $registrationStatus = $registrationStatus ?? ['open' => true, 'message' => ''];
+
+$questionGroups = [];
+
+foreach ($questions as $question) {
+    $sectionId = !empty($question['section_id'])
+        ? (int)$question['section_id']
+        : 0;
+
+    if (!isset($questionGroups[$sectionId])) {
+        if ($sectionId === 0) {
+            $questionGroups[$sectionId] = [
+                'title' => $labels['additional_info'],
+                'description' => '',
+                'questions' => [],
+            ];
+        } else {
+            $sectionTitle = trim((string)(
+                $language === 'es'
+                    ? ($question['section_title_es'] ?? '')
+                    : ''
+            ));
+
+            if ($sectionTitle === '') {
+                $sectionTitle = (string)($question['section_title'] ?? '');
+            }
+
+            $sectionDescription = trim((string)(
+                $language === 'es'
+                    ? ($question['section_description_es'] ?? '')
+                    : ''
+            ));
+
+            if ($sectionDescription === '') {
+                $sectionDescription = (string)($question['section_description'] ?? '');
+            }
+
+            $questionGroups[$sectionId] = [
+                'title' => $sectionTitle,
+                'description' => $sectionDescription,
+                'questions' => [],
+            ];
+        }
+    }
+
+    $questionGroups[$sectionId]['questions'][] = $question;
+}
 ?>
 <!doctype html>
 <html lang="<?= $language === 'es' ? 'es' : 'en' ?>">
@@ -383,17 +429,25 @@ $registrationStatus = $registrationStatus ?? ['open' => true, 'message' => ''];
                             </div>
                         </section>
 
-                        <?php if (!empty($questions)): ?>
-                            <section class="mb-5">
-                                <h2 class="lfchd-section-heading">
-                                    <?= htmlspecialchars($labels['additional_info'], ENT_QUOTES, 'UTF-8') ?>
-                                </h2>
+                        <?php if (!empty($questionGroups)): ?>
+                            <?php foreach ($questionGroups as $questionGroup): ?>
+                                <section class="mb-5">
+                                    <h2 class="lfchd-section-heading">
+                                        <?= htmlspecialchars((string)$questionGroup['title'], ENT_QUOTES, 'UTF-8') ?>
+                                    </h2>
 
-                                <div class="row g-4">
-                                    <?php foreach ($questions as $question): ?>
+                                    <?php if (trim((string)$questionGroup['description']) !== ''): ?>
+                                        <div class="text-secondary mb-3">
+                                            <?= nl2br(htmlspecialchars((string)$questionGroup['description'], ENT_QUOTES, 'UTF-8')) ?>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <div class="row g-4">
+                                        <?php foreach ($questionGroup['questions'] as $question): ?>
                                         <?php
                                         $questionId = (int)$question['id'];
                                         $type = (string)$question['question_type'];
+                                        $dataType = (string)($question['data_type'] ?? 'text');
                                         $required = !empty($question['required']);
                                         [$englishOptions, $spanishOptions] = questionOptions($question);
                                         $hasOptions = count($englishOptions) > 0;
@@ -430,7 +484,7 @@ $registrationStatus = $registrationStatus ?? ['open' => true, 'message' => ''];
                                                 <?php endif; ?>
                                             </label>
 
-                                            <?php if ($type === 'textarea'): ?>
+                                            <?php if ($type === 'textarea' && $dataType === 'text'): ?>
                                                 <textarea
                                                     class="form-control"
                                                     name="answers[<?= $questionId ?>]"
@@ -515,18 +569,33 @@ $registrationStatus = $registrationStatus ?? ['open' => true, 'message' => ''];
                                                 </div>
 
                                             <?php else: ?>
+                                                <?php
+                                                $inputType = match ($dataType) {
+                                                    'email' => 'email',
+                                                    'phone' => 'tel',
+                                                    'date', 'birthdate' => 'date',
+                                                    'number' => 'number',
+                                                    default => 'text',
+                                                };
+                                                ?>
                                                 <input
                                                     class="form-control"
-                                                    type="text"
+                                                    type="<?= htmlspecialchars($inputType, ENT_QUOTES, 'UTF-8') ?>"
                                                     name="answers[<?= $questionId ?>]"
                                                     value="<?= htmlspecialchars((string)$answer, ENT_QUOTES, 'UTF-8') ?>"
+                                                    <?= $dataType === 'email' ? 'inputmode="email"' : '' ?>
+                                                    <?= $dataType === 'phone' ? 'inputmode="tel"' : '' ?>
+                                                    <?= $dataType === 'number' ? 'inputmode="decimal" step="any"' : '' ?>
+                                                    <?= $dataType === 'birthdate' ? 'max="' . (new DateTimeImmutable('today'))->format('Y-m-d') . '"' : '' ?>
                                                     <?= $required ? 'data-required="1"' : '' ?>
                                                 >
                                             <?php endif; ?>
                                         </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            </section>
+
+                                        <?php endforeach; ?>
+                                    </div>
+                                </section>
+                            <?php endforeach; ?>
                         <?php endif; ?>
 
                         <div

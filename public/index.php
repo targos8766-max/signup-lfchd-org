@@ -135,7 +135,6 @@ if (
 /*
  * Public routes
  */
-
 if (
     preg_match(
         '#^/event/([A-Za-z0-9]+)$#',
@@ -450,6 +449,119 @@ if (
     EntraAuth::requireAdmin();
 
     (new QuestionController())->update(
+        (int) $matches[1],
+        (int) $matches[2]
+    );
+
+    exit;
+}
+
+/*
+ * Question builder action routes.
+ */
+if (
+    preg_match(
+        '#^/admin/events/(\d+)/questions/(\d+)/copy$#',
+        $path,
+        $matches
+    )
+    && $method === 'POST'
+) {
+    EntraAuth::requireAdmin();
+
+    (new QuestionController())->copyQuestion(
+        (int) $matches[1],
+        (int) $matches[2]
+    );
+
+    exit;
+}
+
+if (
+    preg_match(
+        '#^/admin/events/(\d+)/questions/(\d+)/delete$#',
+        $path,
+        $matches
+    )
+    && $method === 'POST'
+) {
+    EntraAuth::requireAdmin();
+
+    (new QuestionController())->deleteQuestion(
+        (int) $matches[1],
+        (int) $matches[2]
+    );
+
+    exit;
+}
+
+if (
+    preg_match(
+        '#^/admin/events/(\d+)/question-sections/(\d+)/duplicate$#',
+        $path,
+        $matches
+    )
+    && $method === 'POST'
+) {
+    EntraAuth::requireAdmin();
+
+    (new QuestionController())->duplicateSection(
+        (int) $matches[1],
+        (int) $matches[2]
+    );
+
+    exit;
+}
+
+/*
+ * Question section routes.
+ */
+if (
+    preg_match(
+        '#^/admin/events/(\d+)/question-sections$#',
+        $path,
+        $matches
+    )
+    && $method === 'POST'
+) {
+    EntraAuth::requireAdmin();
+
+    (new QuestionController())->storeSection(
+        (int) $matches[1]
+    );
+
+    exit;
+}
+
+if (
+    preg_match(
+        '#^/admin/events/(\d+)/question-sections/(\d+)/edit$#',
+        $path,
+        $matches
+    )
+    && $method === 'POST'
+) {
+    EntraAuth::requireAdmin();
+
+    (new QuestionController())->updateSection(
+        (int) $matches[1],
+        (int) $matches[2]
+    );
+
+    exit;
+}
+
+if (
+    preg_match(
+        '#^/admin/events/(\d+)/question-sections/(\d+)/delete$#',
+        $path,
+        $matches
+    )
+    && $method === 'POST'
+) {
+    EntraAuth::requireAdmin();
+
+    (new QuestionController())->deleteSection(
         (int) $matches[1],
         (int) $matches[2]
     );
