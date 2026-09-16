@@ -56,6 +56,11 @@ class EventController
             'preferred_language' => $language,
         ];
 
+        $registrationStatus = [
+            'open' => $registrationOpen,
+            'message' => $registrationMessage,
+        ];
+
         require dirname(__DIR__, 3)
             . '/templates/public/event.php';
     }
@@ -271,6 +276,84 @@ class EventController
         }
 
         return true;
+    }
+
+    private function questionBlocksRegistration(
+        array $question,
+        mixed $answer
+    ): bool {
+        if ((int) ($question['blocks_registration'] ?? 0) !== 1) {
+            return false;
+        }
+
+        $operator =
+            (string) ($question['blocking_operator'] ?? '');
+
+        $expectedValue =
+            (string) ($question['blocking_value'] ?? '');
+
+        if (
+            !in_array($operator, ['equals', 'not_equals'], true)
+            || $expectedValue === ''
+        ) {
+            return false;
+        }
+
+        if (is_array($answer)) {
+            $actualValues = array_map('strval', $answer);
+
+            $matches = in_array(
+                $expectedValue,
+                $actualValues,
+                true
+            );
+        } else {
+            $actualValue = trim((string) $answer);
+
+            /*
+             * An unanswered non-checkbox question should not trigger a
+             * qualification rule. This prevents "not equals" from blocking
+             * someone before they have actually answered the question.
+             */
+            if (
+                $actualValue === ''
+                && $question['question_type'] !== 'checkbox'
+            ) {
+                return false;
+            }
+
+            if (
+                $question['question_type'] === 'checkbox'
+                && $actualValue !== '1'
+            ) {
+                $actualValue = '0';
+            }
+
+            $matches = $actualValue === $expectedValue;
+        }
+
+        return $operator === 'equals'
+            ? $matches
+            : !$matches;
+    }
+
+    private function blockingMessage(
+        array $question,
+        string $language
+    ): string {
+        if ($language === 'es') {
+            $spanish = trim(
+                (string) ($question['blocking_message_es'] ?? '')
+            );
+
+            if ($spanish !== '') {
+                return $spanish;
+            }
+        }
+
+        return trim(
+            (string) ($question['blocking_message'] ?? '')
+        );
     }
 
     public function register(string $slug): void
@@ -546,6 +629,45 @@ class EventController
                     $messages['invalid_option_prefix']
                     . $questionText
                     . '.';
+            }
+        }
+
+        /*
+         * Enforce registration qualification rules on the server.
+         * Only active/visible questions participate, so answers from hidden
+         * conditional questions cannot disqualify a registrant.
+         */
+        foreach ($questions as $question) {
+            if (
+                !$this->questionIsActive(
+                    $question,
+                    $submittedAnswers
+                )
+            ) {
+                continue;
+            }
+
+            $questionId = (int) $question['id'];
+
+            $answer =
+                $submittedAnswers[$questionId]
+                ?? '';
+
+            if (
+                $this->questionBlocksRegistration(
+                    $question,
+                    $answer
+                )
+            ) {
+                $message =
+                    $this->blockingMessage(
+                        $question,
+                        $preferredLanguage
+                    );
+
+                if ($message !== '') {
+                    $errors[] = $message;
+                }
             }
         }
 
@@ -1003,6 +1125,11 @@ class EventController
         );
 
         $old['preferred_language'] = $language;
+
+        $registrationStatus = [
+            'open' => $registrationOpen,
+            'message' => $registrationMessage,
+        ];
 
         require dirname(__DIR__, 3)
             . '/templates/public/event.php';

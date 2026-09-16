@@ -270,6 +270,79 @@ require dirname(__DIR__) . '/partials/header.php';
                     </div>
                 </details>
 
+
+                <details class="border rounded mb-4 bg-light">
+                    <summary class="p-3 fw-semibold" style="cursor: pointer;">
+                        Registration Qualification
+                    </summary>
+
+                    <div class="p-3 pt-0">
+                        <div class="form-check mb-3">
+                            <input
+                                type="checkbox"
+                                name="blocks_registration"
+                                value="1"
+                                class="form-check-input qualification-toggle"
+                                id="new-blocks-registration"
+                            >
+                            <label
+                                class="form-check-label"
+                                for="new-blocks-registration"
+                            >
+                                Block registration based on this answer
+                            </label>
+                        </div>
+
+                        <div class="qualification-fields">
+                            <div class="row g-3">
+                                <div class="col-12 col-md-4">
+                                    <label class="form-label">Condition</label>
+                                    <select name="blocking_operator" class="form-select">
+                                        <option value="equals">Equals</option>
+                                        <option value="not_equals">Does Not Equal</option>
+                                    </select>
+                                </div>
+                                <div class="col-12 col-md-8">
+                                    <label class="form-label">Value</label>
+                                    <input
+                                        type="text"
+                                        name="blocking_value"
+                                        class="form-control"
+                                        placeholder="Example: No"
+                                    >
+                                </div>
+                                <div class="col-12 col-lg-6">
+                                    <label class="form-label">Blocking Message - English</label>
+                                    <textarea
+                                        name="blocking_message"
+                                        class="form-control"
+                                        rows="3"
+                                        maxlength="2000"
+                                    ></textarea>
+                                </div>
+                                <div class="col-12 col-lg-6">
+                                    <label class="form-label">Blocking Message - Spanish</label>
+                                    <textarea
+                                        name="blocking_message_es"
+                                        class="form-control"
+                                        rows="3"
+                                        maxlength="2000"
+                                    ></textarea>
+                                    <div class="form-text">
+                                        Optional. If blank, the public form will use the English blocking message.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-text mt-2">
+                                The value uses the stored English answer. For Dropdown and multi-option Checkbox
+                                questions, enter an English option exactly as configured above. For a single
+                                Checkbox, use 1 for checked and 0 for unchecked.
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
                 <div class="lfchd-mobile-actions">
                     <button
                         type="submit"
@@ -623,6 +696,116 @@ require dirname(__DIR__) . '/partials/header.php';
                             </div>
                         </details>
 
+
+                        <details class="border rounded mb-4 bg-light">
+                            <summary class="p-3 fw-semibold" style="cursor: pointer;">
+                                Registration Qualification
+                            </summary>
+
+                            <div class="p-3 pt-0">
+                                <div class="form-check mb-3">
+                                    <input
+                                        type="checkbox"
+                                        name="blocks_registration"
+                                        value="1"
+                                        class="form-check-input qualification-toggle"
+                                        id="blocks-registration-<?= (int) $question['id'] ?>"
+                                        <?= (int) ($question['blocks_registration'] ?? 0) === 1
+                                            ? 'checked'
+                                            : '' ?>
+                                    >
+                                    <label
+                                        class="form-check-label"
+                                        for="blocks-registration-<?= (int) $question['id'] ?>"
+                                    >
+                                        Block registration based on this answer
+                                    </label>
+                                </div>
+
+                                <div class="qualification-fields">
+                                    <div class="row g-3">
+                                        <div class="col-12 col-md-4">
+                                            <label class="form-label">Condition</label>
+                                            <select name="blocking_operator" class="form-select">
+                                                <option
+                                                    value="equals"
+                                                    <?= ($question['blocking_operator'] ?? 'equals') === 'equals'
+                                                        ? 'selected'
+                                                        : '' ?>
+                                                >
+                                                    Equals
+                                                </option>
+                                                <option
+                                                    value="not_equals"
+                                                    <?= ($question['blocking_operator'] ?? '') === 'not_equals'
+                                                        ? 'selected'
+                                                        : '' ?>
+                                                >
+                                                    Does Not Equal
+                                                </option>
+                                            </select>
+                                        </div>
+
+                                        <div class="col-12 col-md-8">
+                                            <label class="form-label">Value</label>
+                                            <input
+                                                type="text"
+                                                name="blocking_value"
+                                                class="form-control"
+                                                value="<?= htmlspecialchars(
+                                                    (string) ($question['blocking_value'] ?? ''),
+                                                    ENT_QUOTES,
+                                                    'UTF-8'
+                                                ) ?>"
+                                                placeholder="Example: No"
+                                            >
+                                        </div>
+
+                                        <div class="col-12 col-lg-6">
+                                            <label class="form-label">
+                                                Blocking Message - English
+                                            </label>
+                                            <textarea
+                                                name="blocking_message"
+                                                class="form-control"
+                                                rows="3"
+                                                maxlength="2000"
+                                            ><?= htmlspecialchars(
+                                                (string) ($question['blocking_message'] ?? ''),
+                                                ENT_QUOTES,
+                                                'UTF-8'
+                                            ) ?></textarea>
+                                        </div>
+
+                                        <div class="col-12 col-lg-6">
+                                            <label class="form-label">
+                                                Blocking Message - Spanish
+                                            </label>
+                                            <textarea
+                                                name="blocking_message_es"
+                                                class="form-control"
+                                                rows="3"
+                                                maxlength="2000"
+                                            ><?= htmlspecialchars(
+                                                (string) ($question['blocking_message_es'] ?? ''),
+                                                ENT_QUOTES,
+                                                'UTF-8'
+                                            ) ?></textarea>
+                                            <div class="form-text">
+                                                Optional. If blank, the public form will use the English blocking message.
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-text mt-2">
+                                        The value uses the stored English answer. For Dropdown and multi-option Checkbox
+                                        questions, enter an English option exactly as configured above. For a single
+                                        Checkbox, use 1 for checked and 0 for unchecked.
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+
                         <div class="lfchd-mobile-actions">
                             <button
                                 type="submit"
@@ -648,6 +831,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const typeSelect = form.querySelector('.question-type-select');
         const optionsFields = form.querySelector('.dropdown-options-fields');
         const questionTextFields = form.querySelectorAll('.question-text-field');
+        const qualificationToggle = form.querySelector('.qualification-toggle');
+        const qualificationFields = form.querySelector('.qualification-fields');
 
         if (!typeSelect) {
             return;
@@ -677,12 +862,41 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
+        function updateQualificationFields() {
+            if (!qualificationFields) {
+                return;
+            }
+
+            const enabled =
+                qualificationToggle
+                && qualificationToggle.checked;
+
+            qualificationFields.classList.toggle(
+                'd-none',
+                !enabled
+            );
+
+            qualificationFields
+                .querySelectorAll('input, select, textarea')
+                .forEach(function (field) {
+                    field.disabled = !enabled;
+                });
+        }
+
         typeSelect.addEventListener(
             'change',
             updateQuestionFields
         );
 
+        if (qualificationToggle) {
+            qualificationToggle.addEventListener(
+                'change',
+                updateQualificationFields
+            );
+        }
+
         updateQuestionFields();
+        updateQualificationFields();
     });
 });
 </script>

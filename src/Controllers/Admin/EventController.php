@@ -320,7 +320,12 @@ class EventController
                     enabled,
                     conditional_question_id,
                     conditional_operator,
-                    conditional_value
+                    conditional_value,
+                    blocks_registration,
+                    blocking_operator,
+                    blocking_value,
+                    blocking_message,
+                    blocking_message_es
                 FROM event_questions
                 WHERE event_id = ?
                 ORDER BY sort_order, id'
@@ -344,10 +349,15 @@ class EventController
                         enabled,
                         conditional_question_id,
                         conditional_operator,
-                        conditional_value
+                        conditional_value,
+                        blocks_registration,
+                        blocking_operator,
+                        blocking_value,
+                        blocking_message,
+                        blocking_message_es
                     )
                 VALUES
-                    (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL)'
+                    (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?, ?, ?)'
             );
 
             $questionIdMap = [];
@@ -363,6 +373,11 @@ class EventController
                     $question['required'],
                     $question['sort_order'],
                     $question['enabled'],
+                    $question['blocks_registration'],
+                    $question['blocking_operator'],
+                    $question['blocking_value'],
+                    $question['blocking_message'],
+                    $question['blocking_message_es'],
                 ]);
 
                 $questionIdMap[

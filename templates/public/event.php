@@ -407,6 +407,21 @@ $registrationStatus = $registrationStatus ?? ['open' => true, 'message' => ''];
                                                 data-condition-operator="<?= htmlspecialchars((string)$question['conditional_operator'], ENT_QUOTES, 'UTF-8') ?>"
                                                 data-condition-value="<?= htmlspecialchars((string)$question['conditional_value'], ENT_QUOTES, 'UTF-8') ?>"
                                             <?php endif; ?>
+                                            <?php if (!empty($question['blocks_registration'])): ?>
+                                                data-blocks-registration="1"
+                                                data-blocking-operator="<?= htmlspecialchars((string)($question['blocking_operator'] ?? 'equals'), ENT_QUOTES, 'UTF-8') ?>"
+                                                data-blocking-value="<?= htmlspecialchars((string)($question['blocking_value'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                                data-blocking-message="<?= htmlspecialchars(
+                                                    (string)(
+                                                        $language === 'es'
+                                                            && trim((string)($question['blocking_message_es'] ?? '')) !== ''
+                                                                ? $question['blocking_message_es']
+                                                                : ($question['blocking_message'] ?? '')
+                                                    ),
+                                                    ENT_QUOTES,
+                                                    'UTF-8'
+                                                ) ?>"
+                                            <?php endif; ?>
                                         >
                                             <label class="form-label">
                                                 <?= htmlspecialchars(questionLabel($question, $language), ENT_QUOTES, 'UTF-8') ?>
@@ -514,8 +529,19 @@ $registrationStatus = $registrationStatus ?? ['open' => true, 'message' => ''];
                             </section>
                         <?php endif; ?>
 
+                        <div
+                            id="registration-qualification-alert"
+                            class="alert alert-danger d-none mb-4"
+                            role="alert"
+                            aria-live="polite"
+                        ></div>
+
                         <div class="d-grid d-sm-flex justify-content-sm-end">
-                            <button type="submit" class="btn btn-primary btn-lg lfchd-submit-button">
+                            <button
+                                type="submit"
+                                class="btn btn-primary btn-lg lfchd-submit-button"
+                                id="registration-submit-button"
+                            >
                                 <?= htmlspecialchars($labels['submit'], ENT_QUOTES, 'UTF-8') ?>
                             </button>
                         </div>
@@ -547,77 +573,333 @@ $registrationStatus = $registrationStatus ?? ['open' => true, 'message' => ''];
     const form = document.getElementById('registration-form');
     if (!form) return;
 
-    const wrappers = Array.from(form.querySelectorAll('.question-wrapper'));
+    const wrappers = Array.from(
+        form.querySelectorAll('.question-wrapper')
+    );
+
+    const qualificationAlert =
+        document.getElementById(
+            'registration-qualification-alert'
+        );
+
+    const submitButton =
+        document.getElementById(
+            'registration-submit-button'
+        );
 
     function valuesForQuestion(questionId) {
-        const wrapper = form.querySelector('.question-wrapper[data-question-id="' + questionId + '"]');
-        if (!wrapper || wrapper.hidden) return [];
+        const wrapper = form.querySelector(
+            '.question-wrapper[data-question-id="'
+            + questionId
+            + '"]'
+        );
 
-        const controls = Array.from(wrapper.querySelectorAll('input, select, textarea'));
-        const checkboxes = controls.filter(control => control.type === 'checkbox');
+        if (!wrapper || wrapper.hidden) {
+            return [];
+        }
+
+        const controls = Array.from(
+            wrapper.querySelectorAll(
+                'input, select, textarea'
+            )
+        );
+
+        const checkboxes = controls.filter(
+            control => control.type === 'checkbox'
+        );
 
         if (checkboxes.length) {
-            return checkboxes.filter(control => control.checked).map(control => control.value);
+            const checkedValues = checkboxes
+                .filter(control => control.checked)
+                .map(control => control.value);
+
+            /*
+             * A single yes/no checkbox stores 1 when checked and 0 when
+             * unchecked. Multi-option checkboxes simply return their
+             * selected English option values.
+             */
+            if (
+                checkboxes.length === 1
+                && !checkboxes[0].name.endsWith('[]')
+            ) {
+                return checkboxes[0].checked
+                    ? ['1']
+                    : ['0'];
+            }
+
+            return checkedValues;
         }
 
         const control = controls[0];
-        return control && control.value !== '' ? [control.value] : [];
+
+        return control && control.value !== ''
+            ? [control.value]
+            : [];
     }
 
     function clearWrapper(wrapper) {
-        wrapper.querySelectorAll('input, select, textarea').forEach(control => {
-            if (control.type === 'checkbox' || control.type === 'radio') {
-                control.checked = false;
-            } else {
-                control.value = '';
-            }
-        });
+        wrapper
+            .querySelectorAll(
+                'input, select, textarea'
+            )
+            .forEach(control => {
+                if (
+                    control.type === 'checkbox'
+                    || control.type === 'radio'
+                ) {
+                    control.checked = false;
+                } else {
+                    control.value = '';
+                }
+            });
     }
 
-    function applyRequiredState(wrapper, visible) {
-        wrapper.querySelectorAll('[data-required="1"]').forEach(control => {
-            control.required = visible;
-        });
+    function applyRequiredState(
+        wrapper,
+        visible
+    ) {
+        wrapper
+            .querySelectorAll(
+                '[data-required="1"]'
+            )
+            .forEach(control => {
+                control.required = visible;
+            });
 
-        const requiredGroup = Array.from(wrapper.querySelectorAll('[data-required-group="1"]'));
-        requiredGroup.forEach(control => control.required = false);
+        const requiredGroup = Array.from(
+            wrapper.querySelectorAll(
+                '[data-required-group="1"]'
+            )
+        );
 
-        if (visible && requiredGroup.length && !requiredGroup.some(control => control.checked)) {
+        requiredGroup.forEach(
+            control => control.required = false
+        );
+
+        if (
+            visible
+            && requiredGroup.length
+            && !requiredGroup.some(
+                control => control.checked
+            )
+        ) {
             requiredGroup[0].required = true;
         }
     }
 
     function updateConditionalQuestions() {
-        wrappers.forEach(wrapper => {
-            const controllingId = wrapper.dataset.conditionQuestionId;
+        /*
+         * Run multiple passes so chained conditional questions settle
+         * correctly even when a controlling question becomes hidden.
+         */
+        for (
+            let pass = 0;
+            pass < wrappers.length;
+            pass++
+        ) {
+            let changed = false;
 
-            if (!controllingId) {
-                wrapper.hidden = false;
-                applyRequiredState(wrapper, true);
+            wrappers.forEach(wrapper => {
+                const controllingId =
+                    wrapper.dataset.conditionQuestionId;
+
+                if (!controllingId) {
+                    if (wrapper.hidden) {
+                        wrapper.hidden = false;
+                        changed = true;
+                    }
+
+                    applyRequiredState(
+                        wrapper,
+                        true
+                    );
+
+                    return;
+                }
+
+                const actualValues =
+                    valuesForQuestion(
+                        controllingId
+                    );
+
+                const expected =
+                    wrapper.dataset.conditionValue
+                    || '';
+
+                const operator =
+                    wrapper.dataset.conditionOperator
+                    || 'equals';
+
+                let visible =
+                    actualValues.includes(
+                        expected
+                    );
+
+                if (
+                    operator
+                    === 'not_equals'
+                ) {
+                    visible = !visible;
+                }
+
+                if (
+                    !visible
+                    && !wrapper.hidden
+                ) {
+                    clearWrapper(wrapper);
+                }
+
+                if (
+                    wrapper.hidden
+                    !== !visible
+                ) {
+                    wrapper.hidden = !visible;
+                    changed = true;
+                }
+
+                applyRequiredState(
+                    wrapper,
+                    visible
+                );
+            });
+
+            if (!changed) {
+                break;
+            }
+        }
+    }
+
+    function updateQualificationState() {
+        const messages = [];
+
+        wrappers.forEach(wrapper => {
+            if (
+                wrapper.hidden
+                || wrapper.dataset.blocksRegistration
+                    !== '1'
+            ) {
                 return;
             }
 
-            const actualValues = valuesForQuestion(controllingId);
-            const expected = wrapper.dataset.conditionValue || '';
-            const operator = wrapper.dataset.conditionOperator || 'equals';
+            const questionId =
+                wrapper.dataset.questionId;
 
-            let visible = actualValues.includes(expected);
-            if (operator === 'not_equals') {
-                visible = !visible;
+            const actualValues =
+                valuesForQuestion(
+                    questionId
+                );
+
+            const expected =
+                wrapper.dataset.blockingValue
+                || '';
+
+            const operator =
+                wrapper.dataset.blockingOperator
+                || 'equals';
+
+            /*
+             * An unanswered non-checkbox field should not trigger a
+             * "Does Not Equal" rule before the registrant answers it.
+             * Single checkboxes always have an effective 0/1 answer.
+             */
+            const controls = Array.from(
+                wrapper.querySelectorAll(
+                    'input, select, textarea'
+                )
+            );
+
+            const checkboxes = controls.filter(
+                control =>
+                    control.type === 'checkbox'
+            );
+
+            const isSingleCheckbox =
+                checkboxes.length === 1
+                && !checkboxes[0].name.endsWith('[]');
+
+            if (
+                actualValues.length === 0
+                && !isSingleCheckbox
+            ) {
+                return;
             }
 
-            if (!visible && !wrapper.hidden) {
-                clearWrapper(wrapper);
+            let blocked =
+                actualValues.includes(
+                    expected
+                );
+
+            if (
+                operator
+                === 'not_equals'
+            ) {
+                blocked = !blocked;
             }
 
-            wrapper.hidden = !visible;
-            applyRequiredState(wrapper, visible);
+            if (!blocked) {
+                return;
+            }
+
+            const message =
+                wrapper.dataset.blockingMessage
+                || '';
+
+            if (
+                message !== ''
+                && !messages.includes(message)
+            ) {
+                messages.push(message);
+            }
         });
+
+        if (
+            qualificationAlert
+            && submitButton
+        ) {
+            if (messages.length > 0) {
+                qualificationAlert.textContent =
+                    messages.join(' ');
+
+                qualificationAlert.classList.remove(
+                    'd-none'
+                );
+
+                submitButton.disabled = true;
+                submitButton.setAttribute(
+                    'aria-disabled',
+                    'true'
+                );
+            } else {
+                qualificationAlert.textContent = '';
+
+                qualificationAlert.classList.add(
+                    'd-none'
+                );
+
+                submitButton.disabled = false;
+                submitButton.removeAttribute(
+                    'aria-disabled'
+                );
+            }
+        }
     }
 
-    form.addEventListener('change', updateConditionalQuestions);
-    form.addEventListener('input', updateConditionalQuestions);
-    updateConditionalQuestions();
+    function updateFormState() {
+        updateConditionalQuestions();
+        updateQualificationState();
+    }
+
+    form.addEventListener(
+        'change',
+        updateFormState
+    );
+
+    form.addEventListener(
+        'input',
+        updateFormState
+    );
+
+    updateFormState();
 })();
 </script>
 
