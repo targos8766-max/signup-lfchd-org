@@ -1,8 +1,11 @@
 <?php
 
 use Boneblaze\SignupLfchdOrg\Services\Csrf;
+use Boneblaze\SignupLfchdOrg\Services\EntraAuth;
 
 $pageTitle = 'Registrations | LFCHD Signup';
+
+$isAdministrator = EntraAuth::isAdministrator();
 
 require dirname(__DIR__) . '/partials/header.php';
 ?>
@@ -58,6 +61,12 @@ require dirname(__DIR__) . '/partials/header.php';
     <?php if (isset($_GET['restored'])): ?>
         <div class="alert alert-success">
             Registration restored successfully.
+        </div>
+    <?php endif; ?>
+
+    <?php if (isset($_GET['deleted'])): ?>
+        <div class="alert alert-success">
+            Registration permanently deleted.
         </div>
     <?php endif; ?>
 
@@ -464,6 +473,31 @@ require dirname(__DIR__) . '/partials/header.php';
                                                         </form>
                                                     </li>
                                                 <?php endif; ?>
+                                                <?php if (
+                                                    $isAdministrator
+                                                    && $registration['status'] === 'cancelled'
+                                                ): ?>
+                                                    <li>
+                                                        <hr class="dropdown-divider">
+                                                    </li>
+
+                                                    <li>
+                                                        <form
+                                                            method="post"
+                                                            action="/admin/events/<?= (int) $event['id'] ?>/registrations/<?= (int) $registration['id'] ?>/delete"
+                                                            onsubmit="return confirm('Permanently delete this cancelled registration? This cannot be undone.');"
+                                                        >
+                                                            <?= Csrf::field() ?>
+
+                                                            <button
+                                                                type="submit"
+                                                                class="dropdown-item text-danger"
+                                                            >
+                                                                Delete Registration
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                <?php endif; ?>
                                             </ul>
                                         </div>
                                     </td>
@@ -582,6 +616,31 @@ require dirname(__DIR__) . '/partials/header.php';
                                                             class="dropdown-item text-success"
                                                         >
                                                             Restore Registration
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                            <?php endif; ?>
+                                            <?php if (
+                                                $isAdministrator
+                                                && $registration['status'] === 'cancelled'
+                                            ): ?>
+                                                <li>
+                                                    <hr class="dropdown-divider">
+                                                </li>
+
+                                                <li>
+                                                    <form
+                                                        method="post"
+                                                        action="/admin/events/<?= (int) $event['id'] ?>/registrations/<?= (int) $registration['id'] ?>/delete"
+                                                        onsubmit="return confirm('Permanently delete this cancelled registration? This cannot be undone.');"
+                                                    >
+                                                        <?= Csrf::field() ?>
+
+                                                        <button
+                                                            type="submit"
+                                                            class="dropdown-item text-danger"
+                                                        >
+                                                            Delete Registration
                                                         </button>
                                                     </form>
                                                 </li>

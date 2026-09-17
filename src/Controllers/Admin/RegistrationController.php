@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Boneblaze\SignupLfchdOrg\Controllers\Admin;
 
 use Boneblaze\SignupLfchdOrg\Database\Database;
+use Boneblaze\SignupLfchdOrg\Services\EntraAuth;
 use Boneblaze\SignupLfchdOrg\Services\MailgunMailer;
 use Throwable;
 
@@ -925,6 +926,107 @@ class RegistrationController
                 'Location: /admin/events/'
                 . $eventId
                 . '/registrations?restored=1'
+            );
+
+            exit;
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+
+            header(
+                'Location: /admin/events/'
+                . $eventId
+                . '/registrations?error='
+                . rawurlencode($e->getMessage())
+            );
+
+            exit;
+        }
+    }
+
+    public function delete(
+        int $eventId,
+        int $registrationId
+    ): void {
+        /*
+        * Defense in depth: the route also requires an Administrator,
+        * but deletion must be protected at the controller level too.
+        */
+        if (!EntraAuth::isAdministrator()) {
+            http_response_code(403);
+            echo 'Administrator access is required.';
+            return;
+        }
+
+        $pdo = Database::connection();
+
+        try {
+            $pdo->beginTransaction();
+
+            /*
+            * Lock the registration while we verify that it exists
+            * and is already cancelled.
+            */
+            $statement = $pdo->prepare(
+                'SELECT id, status
+                FROM registrations
+                WHERE id = ?
+                AND event_id = ?
+                FOR UPDATE'
+            );
+
+            $statement->execute([
+                $registrationId,
+                $eventId,
+            ]);
+
+            $registration = $statement->fetch();
+
+            if (!$registration) {
+                throw new \RuntimeException(
+                    'Registration not found.'
+                );
+            }
+
+            if ($registration['status'] !== 'cancelled') {
+                throw new \RuntimeException(
+                    'Only cancelled registrations can be deleted.'
+                );
+            }
+
+            /*
+            * Keep the cancelled-status requirement in the DELETE itself
+            * as an additional safeguard.
+            *
+            * registration_answers and registration_reminder_log are
+            * automatically removed by their ON DELETE CASCADE foreign
+            * keys.
+            */
+            $delete = $pdo->prepare(
+                'DELETE FROM registrations
+                WHERE id = ?
+                AND event_id = ?
+                AND status = "cancelled"'
+            );
+
+            $delete->execute([
+                $registrationId,
+                $eventId,
+            ]);
+
+            if ($delete->rowCount() !== 1) {
+                throw new \RuntimeException(
+                    'The registration could not be deleted.'
+                );
+            }
+
+            $pdo->commit();
+
+            header(
+                'Location: /admin/events/'
+                . $eventId
+                . '/registrations?deleted=1'
             );
 
             exit;

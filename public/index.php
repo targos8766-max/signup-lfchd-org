@@ -346,6 +346,25 @@ if (
 /*
  * Administrator-only routes.
  */
+
+if (
+    preg_match(
+        '#^/admin/events/(\d+)/registrations/(\d+)/delete$#',
+        $path,
+        $matches
+    )
+    && $method === 'POST'
+) {
+    EntraAuth::requireAdmin();
+
+    (new RegistrationController())->delete(
+        (int) $matches[1],
+        (int) $matches[2]
+    );
+
+    exit;
+}
+
 if (
     $path === '/admin/events/create'
     && $method === 'GET'
