@@ -147,6 +147,18 @@ require __DIR__ . '/partials/header.php';
                                     ) ?>
                                 </strong>
 
+                                <?php if (
+                                    $isAdministrator
+                                    && !empty($event['admin_only'])
+                                ): ?>
+                                    <span
+                                        class="badge text-bg-dark ms-1"
+                                        title="This event is hidden from non-administrator users."
+                                    >
+                                        Admin Only
+                                    </span>
+                                <?php endif; ?>
+
                                 <?php if (!empty($event['location'])): ?>
 
                                     <div class="small text-muted">

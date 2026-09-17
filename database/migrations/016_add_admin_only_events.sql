@@ -1,0 +1,3 @@
+ALTER TABLE events
+    ADD COLUMN admin_only TINYINT(1) NOT NULL DEFAULT 0
+    AFTER status;

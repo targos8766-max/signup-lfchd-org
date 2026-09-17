@@ -18,25 +18,13 @@ class Event
         $statement = $this->pdo->prepare(
             'INSERT INTO events
                 (
-                    title,
-                    title_es,
-                    public_slug,
-                    description,
-                    description_es,
-                    location,
-                    location_es,
-                    event_date,
-                    start_time,
-                    end_time,
-                    interval_minutes,
-                    default_capacity,
-                    status,
-                    signup_open_at,
-                    signup_close_at,
-                    created_by
+                    title, title_es, public_slug, description, description_es,
+                    location, location_es, event_date, start_time, end_time,
+                    interval_minutes, default_capacity, status, admin_only,
+                    signup_open_at, signup_close_at, created_by
                 )
              VALUES
-                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
 
         $statement->execute([
@@ -53,6 +41,7 @@ class Event
             $data['interval_minutes'],
             $data['default_capacity'],
             $data['status'] ?? 'draft',
+            (int) ($data['admin_only'] ?? 0),
             $data['signup_open_at'] ?? null,
             $data['signup_close_at'] ?? null,
             $data['created_by'] ?? null,
@@ -66,9 +55,7 @@ class Event
         $statement = $this->pdo->prepare(
             'SELECT * FROM events WHERE id = ?'
         );
-
         $statement->execute([$eventId]);
-
         return $statement->fetch();
     }
 
@@ -76,21 +63,11 @@ class Event
     {
         $statement = $this->pdo->prepare(
             'UPDATE events
-             SET
-                title = ?,
-                title_es = ?,
-                description = ?,
-                description_es = ?,
-                location = ?,
-                location_es = ?,
-                event_date = ?,
-                start_time = ?,
-                end_time = ?,
-                interval_minutes = ?,
-                default_capacity = ?,
-                status = ?,
-                signup_open_at = ?,
-                signup_close_at = ?
+             SET title = ?, title_es = ?, description = ?, description_es = ?,
+                 location = ?, location_es = ?, event_date = ?, start_time = ?,
+                 end_time = ?, interval_minutes = ?, default_capacity = ?,
+                 status = ?, admin_only = ?, signup_open_at = ?,
+                 signup_close_at = ?
              WHERE id = ?'
         );
 
@@ -107,6 +84,7 @@ class Event
             $data['interval_minutes'],
             $data['default_capacity'],
             $data['status'],
+            (int) ($data['admin_only'] ?? 0),
             $data['signup_open_at'] ?? null,
             $data['signup_close_at'] ?? null,
             $eventId,

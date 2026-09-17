@@ -180,6 +180,21 @@ require dirname(__DIR__) . '/partials/header.php';
 
                     </div>
 
+                    <div class="mb-4">
+                        <div class="form-check">
+                            <input type="checkbox" id="admin_only" name="admin_only"
+                                value="1" class="form-check-input"
+                                <?= !empty($adminOnly) ? 'checked' : '' ?>>
+                            <label class="form-check-label fw-semibold" for="admin_only">
+                                Administrators Only
+                            </label>
+                        </div>
+                        <div class="form-text ms-4">
+                            Hide this event from Registration Managers and other non-administrator users.
+                            This does not disable the public registration link.
+                        </div>
+                    </div>
+
                     <div class="row">
 
                         <div class="col-md-6 mb-3">

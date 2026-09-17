@@ -113,6 +113,7 @@ class EventController
         $intervalMinutes = (int) ($_POST['interval_minutes'] ?? 0);
         $defaultCapacity = (int) ($_POST['default_capacity'] ?? 0);
         $status = $_POST['status'] ?? 'draft';
+        $adminOnly = isset($_POST['admin_only']) ? 1 : 0;
 
         $signupOpenAt = trim($_POST['signup_open_at'] ?? '');
         $signupCloseAt = trim($_POST['signup_close_at'] ?? '');
@@ -188,6 +189,7 @@ class EventController
                 'interval_minutes' => $intervalMinutes,
                 'default_capacity' => $defaultCapacity,
                 'status' => $status,
+                'admin_only' => $adminOnly,
                 'signup_open_at' => $signupOpenAt,
                 'signup_close_at' => $signupCloseAt,
             ]);
@@ -211,6 +213,7 @@ class EventController
             'interval_minutes' => $intervalMinutes,
             'default_capacity' => $defaultCapacity,
             'status' => $status,
+            'admin_only' => $adminOnly,
             'signup_open_at' => $signupOpenAt,
             'signup_close_at' => $signupCloseAt,
         ]);
@@ -262,6 +265,7 @@ class EventController
                 'interval_minutes' => $event['interval_minutes'],
                 'default_capacity' => $event['default_capacity'],
                 'status' => 'draft',
+                'admin_only' => (int) ($event['admin_only'] ?? 0),
                 'signup_open_at' => $event['signup_open_at'],
                 'signup_close_at' => $event['signup_close_at'],
                 'created_by' =>
@@ -515,6 +519,7 @@ class EventController
         $endTime = $_POST['end_time'] ?? '';
         $intervalMinutes = (int) ($_POST['interval_minutes'] ?? 0);
         $defaultCapacity = (int) ($_POST['default_capacity'] ?? 0);
+        $adminOnly = isset($_POST['admin_only']) ? 1 : 0;
 
         $errors = [];
 
@@ -574,6 +579,7 @@ class EventController
                 'interval_minutes' => $intervalMinutes,
                 'default_capacity' => $defaultCapacity,
                 'status' => 'draft',
+                'admin_only' => $adminOnly,
                 'created_by' => EntraAuth::user()['email'] ?? 'unknown',
             ]);
 
