@@ -217,7 +217,7 @@ require dirname(__DIR__) . '/partials/header.php';
             <?php else: ?>
 
                 <div class="d-none d-lg-block">
-                    <div class="table-responsive">
+                    <div class="table-responsive-lg">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                             <tr>
